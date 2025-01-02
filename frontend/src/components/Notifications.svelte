@@ -114,6 +114,7 @@
     <div class="notification-list">
         {#each notifications as notification}
             <!-- svelte-ignore a11y-click-events-have-key-events -->
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
             <div
                 class="notification-box"
                 on:click={() =>
@@ -121,7 +122,9 @@
             >
                 <h4>
                     {#each notification.labels as label}
-                        <div>{label}</div>
+                        {#each Object.entries(label) as [key, value]}
+                            <div>{key}: {value}</div>
+                        {/each}
                     {/each}
                 </h4>
                 <img

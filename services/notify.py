@@ -46,7 +46,7 @@ def notify_objects():
                 ]
 
                 unique_id = str(uuid.uuid4()) + '.jpg'
-                image_path = f"../od-data/{unique_id}"
+                image_path = f"data/{unique_id}"
                 cv2.imwrite(image_path, image_array)
 
                 # TODO: count degeri frame okundugundaki değer olmali
