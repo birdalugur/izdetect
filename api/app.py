@@ -1,6 +1,9 @@
 from fastapi import FastAPI, HTTPException, Path
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+
+import redis
+
 import os
 from db import (
     get_active_notifications,
@@ -23,6 +26,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# redis
+REDIS_HOST = "localhost"
+REDIS_PORT = 6379
+redis_client = redis.StrictRedis(
+    host=REDIS_HOST, port=REDIS_PORT, decode_responses=True
+)
+
 
 # Endpoints
 
@@ -86,3 +97,17 @@ async def get_image(
 @app.get("/camurl")
 async def send_camera_url():
     return {"url": CAMERA_URL}
+
+
+@app.post("/start-detection")
+async def start_detection():
+    camera_url = "rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10"
+    try:
+        redis_client.set("camera_url", camera_url)
+        return {
+            "message": "Camera URL set successfully",
+            "camera_url": camera_url,
+            "default_camera_url": CAMERA_URL,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to set camera URL: {e}")

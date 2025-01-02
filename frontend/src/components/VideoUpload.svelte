@@ -66,7 +66,7 @@
         addMessage(startMessage);
 
         try {
-            const response = await fetch("http://localhost:8000/start-video", {
+            const response = await fetch("http://localhost:8000/start-detection", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -80,8 +80,7 @@
             if (response.ok) {
                 startMessage = data.message;
                 cameraUrls.set({
-                    cameraUrl1: data.cameraUrl1,
-                    cameraUrl2: data.cameraUrl2,
+                    cameraUrl2: data.default_camera_url,
                 });
             } else {
                 startMessage = `Could not start: ${data.error || response.statusText}`;
