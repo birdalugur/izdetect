@@ -39,6 +39,7 @@ class FrameProcessor:
             if new_video_source and new_video_source != self.video_source:
                 self.video_source = new_video_source
                 print(f"New camera URL received: {self.video_source}")
+                self.redis_client.delete("camera_url")
 
             if not self.video_source:
                 print("Waiting for a valid camera URL...")

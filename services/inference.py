@@ -62,8 +62,6 @@ def process_frames():
                 serialized_results = serialize_results(results)
                 redis_client.lpush("detections", *serialized_results)
 
-            print("Frame işlendi.")
-
         else:
             # timer.print_summary()
             idle_count += 1
