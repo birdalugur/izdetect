@@ -1,10 +1,9 @@
 from multiprocessing import Process
+import threading
 import frame_producer
 import inference
 import tracking
 import notify
-
-import torch.multiprocessing as mp
 
 
 def start_frame_producer():
@@ -25,16 +24,24 @@ def start_notification():
 
 
 if __name__ == "__main__":
-    mp.set_start_method("spawn")
     processes = [
         Process(target=start_frame_producer),
-        mp.Process(target=start_frame_consumer, daemon=True),
         Process(target=start_tracking),
         Process(target=start_notification),
+    ]
+
+    threads = [
+        threading.Thread(target=start_frame_consumer, daemon=True),
     ]
 
     for process in processes:
         process.start()
 
+    for thread in threads:
+        thread.start()
+
     for process in processes:
         process.join()
+
+    for thread in threads:
+        thread.join()
