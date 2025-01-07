@@ -12,6 +12,12 @@ from db import (
     get_statistics,
 )
 
+from fastapi import FastAPI
+from sse_starlette.sse import EventSourceResponse
+
+import asyncio
+
+
 OUTPUT_FOLDER = os.path.abspath("data/")
 CAMERA_URL = "http://10.100.10.94/axis-cgi/mjpg/video.cgi?resolution=1280x800&fps=10"
 
@@ -25,6 +31,7 @@ app.add_middleware(
     allow_origins=["http://localhost:8080", "http://localhost:3000"],
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
 
 # redis
@@ -111,3 +118,33 @@ async def start_detection():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to set camera URL: {e}")
+
+
+# real time communication
+from fastapi import FastAPI, Request
+from fastapi.responses import StreamingResponse
+import asyncio
+import random
+
+app = FastAPI()
+
+# SSE endpoint
+@app.get("/events")
+async def get_events(request: Request):
+    async def event_generator():
+        while True:
+            # Eğer istemci bağlantıyı kapattıysa döngüden çık
+            if await request.is_disconnected():
+                break
+            
+            # Rastgele bir sayı üret
+            data = {"number": random.randint(1, 100)}
+            
+            # SSE formatında veri gönder
+            yield f"data: {data}\n\n"
+            
+            # 2 saniye bekle
+            await asyncio.sleep(2)
+    
+    # StreamingResponse ile istemciye veri gönder
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
