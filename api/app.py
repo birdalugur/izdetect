@@ -122,25 +122,37 @@ async def start_detection():
 
 
 # real time communication
+import aioredis
 
 
 # SSE endpoint
+# Redis bağlantı bilgileri
+REDIS_HOST = "localhost"
+REDIS_PORT = 6379
+QUEUE_NAME = "event_queue"
+
 @app.get("/events")
 async def get_events(request: Request):
-    async def event_generator():
-        while True:
-            # Eğer istemci bağlantıyı kapattıysa döngüden çık
-            if await request.is_disconnected():
-                break
+    async def redis_event_generator():
+        # Redis'e bağlan
+        redis = await aioredis.from_url(f"redis://{REDIS_HOST}:{REDIS_PORT}")
 
-            # Rastgele bir sayı üret
-            data = {"number": random.randint(1, 100)}
+        try:
+            # Kuyruğu dinlemeye başla
+            while True:
+                # Eğer istemci bağlantıyı kapattıysa döngüden çık
+                if await request.is_disconnected():
+                    break
 
-            # SSE formatında veri gönder
-            yield f"data: {json.dumps(data)}\n\n"
+                # Redis kuyruklarından veri oku (bloklama ile)
+                data = await redis.blpop(QUEUE_NAME, timeout=5)  # Kuyruktan veri oku (key, value döner)
 
-            # 2 saniye bekle
-            await asyncio.sleep(2)
+                if data:
+                    queue_name, message = data
+                    # SSE formatında gönder
+                    yield f"data: {message.decode('utf-8')}\n\n"
+        finally:
+            await redis.close()
 
     # StreamingResponse ile istemciye veri gönder
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(redis_event_generator(), media_type="text/event-stream")
