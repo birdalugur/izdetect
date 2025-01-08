@@ -28,7 +28,7 @@
 <main>
     <h1>Rastgele Sayılar</h1>
     <ul>
-        {#each numbers as number (number)}
+        {#each numbers as number}
             <li>{number}</li>
         {/each}
     </ul>

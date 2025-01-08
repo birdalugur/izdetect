@@ -16,7 +16,7 @@
 <main>
     <div class="left-panel">
         <VideoUpload {addMessage} />
-        <Statistics />
+        <!-- <Statistics /> -->
         <Messages {messages} />
     </div>
     <div class="center-panel">

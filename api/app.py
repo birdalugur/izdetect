@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException, Path
-from fastapi.responses import JSONResponse, FileResponse
+import json
+from fastapi import FastAPI, HTTPException, Path, Request
+from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 import redis
@@ -12,11 +13,12 @@ from db import (
     get_statistics,
 )
 
-from fastapi import FastAPI
+
 from sse_starlette.sse import EventSourceResponse
 
 import asyncio
 
+import random
 
 OUTPUT_FOLDER = os.path.abspath("data/")
 CAMERA_URL = "http://10.100.10.94/axis-cgi/mjpg/video.cgi?resolution=1280x800&fps=10"
@@ -41,6 +43,8 @@ redis_client = redis.StrictRedis(
     host=REDIS_HOST, port=REDIS_PORT, decode_responses=True
 )
 
+selected_label_map = {1: "insan", 2: "arac", 3: "hayvan"}
+
 
 # Endpoints
 
@@ -48,9 +52,6 @@ redis_client = redis.StrictRedis(
 @app.get("/")
 async def index():
     return {"message": "Welcome to the Object Detector!"}
-
-
-selected_label_map = {1: "insan", 2: "arac", 3: "hayvan"}
 
 
 @app.get("/notifications")
@@ -121,12 +122,7 @@ async def start_detection():
 
 
 # real time communication
-from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse
-import asyncio
-import random
 
-app = FastAPI()
 
 # SSE endpoint
 @app.get("/events")
@@ -136,15 +132,15 @@ async def get_events(request: Request):
             # Eğer istemci bağlantıyı kapattıysa döngüden çık
             if await request.is_disconnected():
                 break
-            
+
             # Rastgele bir sayı üret
             data = {"number": random.randint(1, 100)}
-            
+
             # SSE formatında veri gönder
-            yield f"data: {data}\n\n"
-            
+            yield f"data: {json.dumps(data)}\n\n"
+
             # 2 saniye bekle
             await asyncio.sleep(2)
-    
+
     # StreamingResponse ile istemciye veri gönder
     return StreamingResponse(event_generator(), media_type="text/event-stream")
