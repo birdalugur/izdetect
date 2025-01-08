@@ -1,13 +1,16 @@
 <script>
-    let numbers = []; // Gelen sayıları saklamak için bir liste
+    let notifications = []; // Gelen sayıları saklamak için bir liste
 
     function setupEventSource() {
         const eventSource = new EventSource("http://localhost:8000/events");
 
         eventSource.onmessage = (event) => {
-            try {
+            try { 
+                console.log("Gelen veri: ", typeof(event));               
                 const data = JSON.parse(event.data);
-                numbers = [...numbers, data.number];
+                
+                console.log(data);
+                notifications = [...notifications, data];
             } catch (e) {
                 console.error("Hata: Gelen veri JSON formatında değil!", e);
             }
@@ -26,10 +29,10 @@
 </script>
 
 <main>
-    <h1>Rastgele Sayılar</h1>
+    <h1>Bildirimler</h1>
     <ul>
-        {#each numbers as number}
-            <li>{number}</li>
+        {#each notifications as notify}
+            <li>"url": {notify.image_url}, "time": {notify.time}</li>
         {/each}
     </ul>
 </main>

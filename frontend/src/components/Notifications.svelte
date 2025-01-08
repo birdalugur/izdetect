@@ -1,5 +1,4 @@
 <script>
-    // import io from "socket.io-client";
     let notifications = [];
     let selectedImage = null;
     let selectedNotificationId = null;
@@ -35,21 +34,6 @@
             notifications = [];
         }
     };
-
-    // const socket = io("http://localhost:8000");
-
-    // socket.on("connect", () => {
-    //     console.log("Connected to server");
-    // });
-
-    // socket.on("notification", (data) => {
-    //     console.log("Notification received: ", data);
-    //     notifications = [data, ...notifications];
-    // });
-
-    // socket.on("disconnect", () => {
-    //     console.log("Disconnected from server");
-    // });
 
     const showImage = (imageUrl, id) => {
         selectedImage = "http://localhost:8000/output/" + imageUrl;

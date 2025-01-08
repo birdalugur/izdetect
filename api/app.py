@@ -1,9 +1,11 @@
+import asyncio
 import json
 from fastapi import FastAPI, HTTPException, Path, Request
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 import redis
+import aioredis
 
 import os
 from db import (
@@ -13,12 +15,6 @@ from db import (
     get_statistics,
 )
 
-
-from sse_starlette.sse import EventSourceResponse
-
-import asyncio
-
-import random
 
 OUTPUT_FOLDER = os.path.abspath("data/")
 CAMERA_URL = "http://10.100.10.94/axis-cgi/mjpg/video.cgi?resolution=1280x800&fps=10"
@@ -36,12 +32,14 @@ app.add_middleware(
     allow_credentials=True,
 )
 
-# redis
+# Redis bağlantı bilgileri
 REDIS_HOST = "localhost"
 REDIS_PORT = 6379
+CHANNEL_NAME = "event_channel"
 redis_client = redis.StrictRedis(
     host=REDIS_HOST, port=REDIS_PORT, decode_responses=True
 )
+
 
 selected_label_map = {1: "insan", 2: "arac", 3: "hayvan"}
 
@@ -121,37 +119,34 @@ async def start_detection():
         raise HTTPException(status_code=500, detail=f"Failed to set camera URL: {e}")
 
 
-# real time communication
-import aioredis
-
-
 # SSE endpoint
-# Redis bağlantı bilgileri
-REDIS_HOST = "localhost"
-REDIS_PORT = 6379
-QUEUE_NAME = "event_queue"
-
 @app.get("/events")
 async def get_events(request: Request):
     async def redis_event_generator():
-        # Redis'e bağlan
+        # Redis bağlantısını aç
         redis = await aioredis.from_url(f"redis://{REDIS_HOST}:{REDIS_PORT}")
+        pubsub = redis.pubsub()
 
         try:
-            # Kuyruğu dinlemeye başla
+            # Redis kanalını dinlemeye başla
+            await pubsub.subscribe(CHANNEL_NAME)
+
             while True:
                 # Eğer istemci bağlantıyı kapattıysa döngüden çık
                 if await request.is_disconnected():
                     break
 
-                # Redis kuyruklarından veri oku (bloklama ile)
-                data = await redis.blpop(QUEUE_NAME, timeout=5)  # Kuyruktan veri oku (key, value döner)
-
-                if data:
-                    queue_name, message = data
-                    # SSE formatında gönder
-                    yield f"data: {message.decode('utf-8')}\n\n"
+                # Redis kanalından mesaj al
+                message = await pubsub.get_message(
+                    ignore_subscribe_messages=True, timeout=1
+                )
+                if message:
+                    yield f"data: {message['data'].decode('utf-8')}\n\n"
+                    # yield json.dumps(message['data'].decode('utf-8')) + "\n\n"
         finally:
+            # Kaynakları temizle
+            await pubsub.unsubscribe(CHANNEL_NAME)
+            await pubsub.close()
             await redis.close()
 
     # StreamingResponse ile istemciye veri gönder
