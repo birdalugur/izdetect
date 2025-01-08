@@ -4,7 +4,6 @@
     import Statistics from "./components/Statistics.svelte";
     import Messages from "./components/Messages.svelte";
     import LiveCamera from "./components/LiveCamera.svelte";
-    import RealTime from "./components/RealTime.svelte";
 
     let messages = [];
 
@@ -21,7 +20,6 @@
     </div>
     <div class="center-panel">
         <LiveCamera />
-        <RealTime />       
     </div>
     <div class="right-panel">
         <Notifications />

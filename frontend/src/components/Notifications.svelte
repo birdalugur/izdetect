@@ -9,6 +9,9 @@
         notifications = data;
     };
 
+
+
+
     fetchNotifications();
 
     const removeNotification = async (id) => {
@@ -64,6 +67,28 @@
             showImage(previousNotification.image_url, previousNotification._id);
         }
     };
+
+    function setupEventSource() {
+        const eventSource = new EventSource("http://localhost:8000/events");
+
+        eventSource.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                console.log("veri tipi", typeof data);
+                notifications = [data, ...notifications];
+            } catch (e) {
+                console.error("Hata: Gelen veri JSON formatında değil!", e);
+            }
+        };
+
+        eventSource.onerror = (err) => {
+            console.error("SSE bağlantı hatası!", err);
+            eventSource.close();
+            setTimeout(setupEventSource, 3000); // 3 saniye sonra yeniden bağlan
+        };
+    }
+
+    setupEventSource();
 </script>
 
 <div class="head">
