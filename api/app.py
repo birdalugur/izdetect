@@ -1,5 +1,5 @@
 import asyncio
-import json
+import cv2
 from fastapi import FastAPI, HTTPException, Path, Request
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,6 +20,7 @@ from db import (
 
 OUTPUT_FOLDER = os.path.abspath("data/")
 CAMERA_URL = "http://10.100.10.94/axis-cgi/mjpg/video.cgi?resolution=1280x800&fps=10"
+RTSP_URL = "rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10"
 
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
@@ -34,7 +35,7 @@ app.add_middleware(
     allow_credentials=True,
 )
 
-# Redis bağlantı bilgileri
+# Redis bağlanti bilgileri
 REDIS_HOST = "localhost"
 REDIS_PORT = 6379
 CHANNEL_NAME = "event_channel"
@@ -58,7 +59,7 @@ async def index():
 async def get_notifications():
     notifications = get_active_notifications()
 
-    # `labels` alanını eşle
+    # `labels` alanini eşle
     for notification in notifications:
         mapped_labels = []
         for label_obj in notification.get("labels", []):
@@ -109,12 +110,11 @@ async def send_camera_url():
 
 @app.post("/start-detection")
 async def start_detection():
-    camera_url = "rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10"
     try:
-        redis_client.set("camera_url", camera_url)
+        redis_client.set("camera_url", RTSP_URL)
         return {
             "message": "Camera URL set successfully",
-            "camera_url": camera_url,
+            "camera_url": RTSP_URL,
             "default_camera_url": CAMERA_URL,
         }
     except Exception as e:
@@ -125,34 +125,63 @@ async def start_detection():
 @app.get("/events")
 async def get_events(request: Request):
     async def redis_event_generator():
-        # Redis bağlantısını aç
+        # Redis bağlantisini aç
         redis = await aioredis.from_url(f"redis://{REDIS_HOST}:{REDIS_PORT}")
         pubsub = redis.pubsub()
 
         try:
-            # Redis kanalını dinlemeye başla
+            # Redis kanalini dinlemeye başla
             await pubsub.subscribe(CHANNEL_NAME)
 
             while True:
-                # Eğer istemci bağlantıyı kapattıysa döngüden çık
+                # Eğer istemci bağlantiyi kapattiysa döngüden çik
                 if await request.is_disconnected():
                     break
 
-                # Redis kanalından mesaj al
+                # Redis kanalindan mesaj al
                 message = await pubsub.get_message(
                     ignore_subscribe_messages=True, timeout=1
                 )
                 if message:
                     yield f"data: {message['data'].decode('utf-8')}\n\n"
-                    # yield json.dumps(message['data'].decode('utf-8')) + "\n\n"
         finally:
-            # Kaynakları temizle
+            # Kaynaklari temizle
             await pubsub.unsubscribe(CHANNEL_NAME)
             await pubsub.close()
             await redis.close()
 
     # StreamingResponse ile istemciye veri gönder
     return StreamingResponse(redis_event_generator(), media_type="text/event-stream")
+
+
+def generate_frames():
+    cap = cv2.VideoCapture(RTSP_URL)
+    if not cap.isOpened():
+        print("RTSP akişina bağlanilamadi.")
+        return
+
+    while True:
+        success, frame = cap.read()
+        if not success:
+            print("Görüntü alinamadi.")
+            break
+
+        _, buffer = cv2.imencode(".jpg", frame)
+        frame_bytes = buffer.tobytes()
+
+        yield (
+            b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
+        )
+
+    cap.release()
+
+
+@app.get("/video")
+async def video_feed():
+    """Tarayiciya MJPEG akişi döndür."""
+    return StreamingResponse(
+        generate_frames(), media_type="multipart/x-mixed-replace; boundary=frame"
+    )
 
 
 if __name__ == "__main__":

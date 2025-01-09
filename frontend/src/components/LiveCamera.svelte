@@ -4,13 +4,15 @@
     cameraUrls.subscribe((value) => {
         urls = value;
     });
+
+    const fastApiBaseUrl = "http://localhost:8000";
 </script>
 
 <div class="camera-container">
     <h4>Cam - 2</h4>
     <img
         class="camera-view"
-        src={urls.cameraUrl2}
+        src={`${fastApiBaseUrl}/video`}
         alt="IP Kamera Canlı Yayını"
     />
 </div>
