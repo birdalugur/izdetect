@@ -5,14 +5,14 @@
         urls = value;
     });
 
-    const fastApiBaseUrl = "http://localhost:8000";
+    const videoStreamUrl = "http://localhost:8000/video";
 </script>
 
 <div class="camera-container">
     <h4>Cam - 2</h4>
     <img
         class="camera-view"
-        src={`${fastApiBaseUrl}/video`}
+        src={`${videoStreamUrl}`}
         alt="IP Kamera Canlı Yayını"
     />
 </div>
