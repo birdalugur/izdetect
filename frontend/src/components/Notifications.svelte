@@ -1,5 +1,4 @@
 <script>
-    // import io from "socket.io-client";
     let notifications = [];
     let selectedImage = null;
     let selectedNotificationId = null;
@@ -9,6 +8,9 @@
         const data = await response.json();
         notifications = data;
     };
+
+
+
 
     fetchNotifications();
 
@@ -35,21 +37,6 @@
             notifications = [];
         }
     };
-
-    // const socket = io("http://localhost:8000");
-
-    // socket.on("connect", () => {
-    //     console.log("Connected to server");
-    // });
-
-    // socket.on("notification", (data) => {
-    //     console.log("Notification received: ", data);
-    //     notifications = [data, ...notifications];
-    // });
-
-    // socket.on("disconnect", () => {
-    //     console.log("Disconnected from server");
-    // });
 
     const showImage = (imageUrl, id) => {
         selectedImage = "http://localhost:8000/output/" + imageUrl;
@@ -80,6 +67,28 @@
             showImage(previousNotification.image_url, previousNotification._id);
         }
     };
+
+    function setupEventSource() {
+        const eventSource = new EventSource("http://localhost:8000/events");
+
+        eventSource.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                console.log("veri tipi", typeof data);
+                notifications = [data, ...notifications];
+            } catch (e) {
+                console.error("Hata: Gelen veri JSON formatında değil!", e);
+            }
+        };
+
+        eventSource.onerror = (err) => {
+            console.error("SSE bağlantı hatası!", err);
+            eventSource.close();
+            setTimeout(setupEventSource, 3000); // 3 saniye sonra yeniden bağlan
+        };
+    }
+
+    setupEventSource();
 </script>
 
 <div class="head">

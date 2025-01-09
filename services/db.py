@@ -4,10 +4,15 @@ from bson.objectid import ObjectId
 from datetime import datetime
 from typing import List
 
+import aioredis
+import asyncio
+import json
+
 
 client = MongoClient("mongodb://localhost:27017/")
 db = client["object_detection"]
 notifications_collection = db["notifications"]
+selected_label_map = {1: "insan", 2: "arac", 3: "hayvan"}
 
 
 class Notification(BaseModel):
@@ -20,6 +25,16 @@ class Notification(BaseModel):
 
     class Config:
         populate_by_name = True
+
+
+async def publish_to_redis(data):
+    redis = await aioredis.from_url("redis://localhost:6379")
+    try:
+        message = json.dumps(data)
+        await redis.publish("event_channel", message)
+        await asyncio.sleep(0.1)
+    finally:
+        await redis.close()
 
 
 def add_notification(
@@ -46,6 +61,23 @@ def add_notification(
 
     insert_data = record.model_dump(by_alias=True, exclude={"id"})
     result = notifications_collection.insert_one(insert_data)
+
+    mapped_labels = []
+    for label in labels:
+        mapped_labels.append(
+            {selected_label_map.get(int(k), k): v for k, v in label.items()}
+        )
+
+    data = {
+        "_id": str(result.inserted_id),
+        "frame_count": frame_count,
+        "labels": mapped_labels,
+        "image_url": image_url,
+        "time": datetime.fromtimestamp(frame_time).isoformat(),
+        "status": "active",
+    }
+
+    asyncio.run(publish_to_redis(data))
 
     return str(result.inserted_id)
 

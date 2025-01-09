@@ -1,8 +1,13 @@
-from fastapi import FastAPI, HTTPException, Path
-from fastapi.responses import JSONResponse, FileResponse
+import asyncio
+import json
+from fastapi import FastAPI, HTTPException, Path, Request
+from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+
 
 import redis
+import aioredis
 
 import os
 from db import (
@@ -11,6 +16,7 @@ from db import (
     clear_all_notifications,
     get_statistics,
 )
+
 
 OUTPUT_FOLDER = os.path.abspath("data/")
 CAMERA_URL = "http://10.100.10.94/axis-cgi/mjpg/video.cgi?resolution=1280x800&fps=10"
@@ -25,14 +31,19 @@ app.add_middleware(
     allow_origins=["http://localhost:8080", "http://localhost:3000"],
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
 
-# redis
+# Redis bağlantı bilgileri
 REDIS_HOST = "localhost"
 REDIS_PORT = 6379
+CHANNEL_NAME = "event_channel"
 redis_client = redis.StrictRedis(
     host=REDIS_HOST, port=REDIS_PORT, decode_responses=True
 )
+
+
+selected_label_map = {1: "insan", 2: "arac", 3: "hayvan"}
 
 
 # Endpoints
@@ -41,9 +52,6 @@ redis_client = redis.StrictRedis(
 @app.get("/")
 async def index():
     return {"message": "Welcome to the Object Detector!"}
-
-
-selected_label_map = {1: "insan", 2: "arac", 3: "hayvan"}
 
 
 @app.get("/notifications")
@@ -111,3 +119,41 @@ async def start_detection():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to set camera URL: {e}")
+
+
+# SSE endpoint
+@app.get("/events")
+async def get_events(request: Request):
+    async def redis_event_generator():
+        # Redis bağlantısını aç
+        redis = await aioredis.from_url(f"redis://{REDIS_HOST}:{REDIS_PORT}")
+        pubsub = redis.pubsub()
+
+        try:
+            # Redis kanalını dinlemeye başla
+            await pubsub.subscribe(CHANNEL_NAME)
+
+            while True:
+                # Eğer istemci bağlantıyı kapattıysa döngüden çık
+                if await request.is_disconnected():
+                    break
+
+                # Redis kanalından mesaj al
+                message = await pubsub.get_message(
+                    ignore_subscribe_messages=True, timeout=1
+                )
+                if message:
+                    yield f"data: {message['data'].decode('utf-8')}\n\n"
+                    # yield json.dumps(message['data'].decode('utf-8')) + "\n\n"
+        finally:
+            # Kaynakları temizle
+            await pubsub.unsubscribe(CHANNEL_NAME)
+            await pubsub.close()
+            await redis.close()
+
+    # StreamingResponse ile istemciye veri gönder
+    return StreamingResponse(redis_event_generator(), media_type="text/event-stream")
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
