@@ -3,6 +3,8 @@ import json
 from fastapi import FastAPI, HTTPException, Path, Request
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+
 
 import redis
 import aioredis
@@ -151,3 +153,7 @@ async def get_events(request: Request):
 
     # StreamingResponse ile istemciye veri gönder
     return StreamingResponse(redis_event_generator(), media_type="text/event-stream")
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
