@@ -3,9 +3,6 @@
 
     export let addMessage;
 
-    let videoFile = null;
-    let isUploading = false;
-    let uploadMessage = "";
     let isStarting = false;
     let startMessage = "";
     let isStopping = false;
@@ -13,11 +10,6 @@
 
     let memoryValue = 5;
     let sensitivityValue = 0.2;
-
-    const handleFileChange = (event) => {
-        videoFile = event.target.files[0];
-        uploadMessage = "";
-    };
 
     const startRealTimeDetection = async () => {
         isStarting = true;
