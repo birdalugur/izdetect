@@ -103,11 +103,6 @@ async def get_image(
     return FileResponse(file_path)
 
 
-@app.get("/camurl")
-async def send_camera_url():
-    return {"url": CAMERA_URL}
-
-
 @app.post("/start-detection")
 async def start_detection():
     try:
@@ -119,6 +114,17 @@ async def start_detection():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to set camera URL: {e}")
+
+
+@app.post("/stop-detection")
+async def stop_detection():
+    try:
+        redis_client.set("stop_signal", "1")
+        return {"message": "Frame producer stopped successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to stop frame producer: {e}"
+        )
 
 
 # SSE endpoint

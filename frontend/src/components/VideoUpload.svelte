@@ -47,45 +47,21 @@
         }
     };
 
-    const showCamera = async () => {
-        startMessage = "";
-        try {
-            const response = await fetch("http://localhost:8000/camurl", {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-            });
-            const data = await response.json();
-            if (response.ok) {
-                cameraUrls.set({
-                    cameraUrl2: data.url,
-                });
-                startMessage = "Camera URL retrieved successfully.";
-            } else {
-                startMessage = `Could not retrieve camera URL: ${data.error || response.statusText}`;
-            }
-        } catch (error) {
-            startMessage = `Error: ${error.message}`;
-        } finally {
-            isStarting = false;
-            addMessage(startMessage);
-        }
-    };
-
-    const stopRealTimeVideo = async () => {
+    const stopRealTimeDetection = async () => {
         isStopping = true;
-        stopMessage = "Stopping real-time video processing...";
+        stopMessage = "Stopping frame producer...";
         addMessage(stopMessage);
 
         try {
-            const response = await fetch("http://localhost:8000/stop-video", {
-                method: "POST",
-            });
+            const response = await fetch(
+                "http://localhost:8000/stop-detection",
+                {
+                    method: "POST",
+                },
+            );
             const data = await response.json();
             if (response.ok) {
                 stopMessage = data.message;
-                clearCameraUrls();
             } else {
                 stopMessage = `Could not stop: ${data.error || response.statusText}`;
             }
@@ -122,18 +98,11 @@
     </button>
 
     <button
-        class="button stop-button"
-        on:click={stopRealTimeVideo}
+        class="button stop-frame-producer"
+        on:click={stopRealTimeDetection}
         disabled={isStopping}
     >
-        {isStopping ? "Stopping..." : "Stop Camera"}
-    </button>
-    <button
-        class="button show-button"
-        on:click={showCamera}
-        disabled={isStopping}
-    >
-        {isStopping ? "Stopping..." : "Show Camera"}
+        {isStopping ? "Stopping..." : "Stop Detection"}
     </button>
 </div>
 
@@ -180,16 +149,11 @@
         cursor: not-allowed;
     }
 
-    .stop-button {
-        background-color: #af3945;
+    .stop-frame-producer {
+        background-color: #d9534f;
         color: white;
     }
-
-    .show-button {
-        background-color: powderblue;
-    }
-
-    .stop-button:disabled {
+    .stop-frame-producer:disabled {
         background-color: #6c757d;
         cursor: not-allowed;
     }

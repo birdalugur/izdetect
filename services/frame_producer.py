@@ -32,6 +32,14 @@ class FrameProcessor:
         else:
             raise ValueError("Unsupported encoding method. Use 'binary' or 'base64'.")
 
+    def check_stop_signal(self):
+        stop_signal = self.redis_client.get("stop_signal")
+        if stop_signal == "1":
+            self.redis_client.delete("stop_signal")
+            print("Stop signal received. Halting frame processing.")
+            return True
+        return False
+
     def capture_frames(self, encoding_method="binary"):
         while True:
             # Check for new camera URL
@@ -52,6 +60,8 @@ class FrameProcessor:
             self.timer.start("read")
 
             while True:
+                if self.check_stop_signal():
+                    break
                 ret, frame = cap.read()
                 if not ret:
                     no_frame_count += 1
