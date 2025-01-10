@@ -98,30 +98,6 @@
             addMessage(startMessage);
         }
     };
-
-    const stopRealTimeVideo = async () => {
-        isStopping = true;
-        stopMessage = "Stopping real-time video processing...";
-        addMessage(stopMessage);
-
-        try {
-            const response = await fetch("http://localhost:8000/stop-video", {
-                method: "POST",
-            });
-            const data = await response.json();
-            if (response.ok) {
-                stopMessage = data.message;
-                clearCameraUrls();
-            } else {
-                stopMessage = `Could not stop: ${data.error || response.statusText}`;
-            }
-        } catch (error) {
-            stopMessage = `Error: ${error.message}`;
-        } finally {
-            isStopping = false;
-            addMessage(stopMessage);
-        }
-    };
 </script>
 
 <div class="upload-container">
@@ -155,13 +131,6 @@
         {isStopping ? "Stopping..." : "Stop Detection"}
     </button>
 
-    <button
-        class="button stop-button"
-        on:click={stopRealTimeVideo}
-        disabled={isStopping}
-    >
-        {isStopping ? "Stopping..." : "Stop Camera"}
-    </button>
     <button
         class="button show-button"
         on:click={showCamera}
@@ -214,18 +183,8 @@
         cursor: not-allowed;
     }
 
-    .stop-button {
-        background-color: #af3945;
-        color: white;
-    }
-
     .show-button {
         background-color: powderblue;
-    }
-
-    .stop-button:disabled {
-        background-color: #6c757d;
-        cursor: not-allowed;
     }
 
     .stop-frame-producer {
