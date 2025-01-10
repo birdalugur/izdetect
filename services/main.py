@@ -7,7 +7,7 @@ import notify
 
 
 def start_frame_producer():
-    producer = frame_producer.FrameProcessor()
+    producer = frame_producer.FrameProcessor(output_queue="frames_camera1", url_key="camera_url")
     producer.capture_frames(encoding_method="binary")
 
 

@@ -7,20 +7,19 @@ import base64
 
 
 class FrameProcessor:
-    def __init__(
-        self, redis_host="localhost", redis_port=6379, frame_queue="video_frames"
-    ):
+    def __init__(self, output_queue, url_key, redis_host="localhost", redis_port=6379):
         self.redis_host = redis_host
         self.redis_port = redis_port
-        self.frame_queue = frame_queue
+        self.output_queue = output_queue
+        self.url_key = url_key
         self.redis_client = redis.StrictRedis(
             host=self.redis_host, port=self.redis_port, decode_responses=True
         )
         self.video_source = None
         self.timer = ProcessingTimer()
 
-    def get_camera_url(self, redis_key="camera_url"):
-        return self.redis_client.get(redis_key)
+    def get_camera_url(self,):
+        return self.redis_client.get(self.url_key)
 
     def encode_img(self, image_frame: np.ndarray, encoding_method="binary") -> bytes:
         _, buffer = cv2.imencode(".jpg", image_frame)
@@ -78,7 +77,7 @@ class FrameProcessor:
                     no_frame_count = 0
 
                 image_bytes = self.encode_img(frame, encoding_method=encoding_method)
-                self.redis_client.lpush(self.frame_queue, image_bytes)
+                self.redis_client.lpush(self.output_queue, image_bytes)
 
             # Release the camera and wait for a new URL
             cap.release()
@@ -89,6 +88,6 @@ class FrameProcessor:
 
 
 if __name__ == "__main__":
-    processor = FrameProcessor()
+    processor = FrameProcessor(output_queue="frames_camera1", url_key="camera_url")
     processor.capture_frames(encoding_method="binary")
     # set camera_url rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10

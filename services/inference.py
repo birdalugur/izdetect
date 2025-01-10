@@ -7,13 +7,11 @@ import model
 import utils
 import json
 
-# from processing_timer import ProcessingTimer
 
 REDIS_HOST = "localhost"
 REDIS_PORT = 6379
-FRAME_QUEUE = "video_frames"
-NOTIFICATION_QUEUE = "notification_queue"
-# timer = ProcessingTimer()
+INPUT_QUEUE = "frames_camera1"
+OUTPUT_QUEUE = "detections"
 
 
 def decode_img(image_bytes: bytes) -> np.ndarray:
@@ -44,7 +42,7 @@ def process_frames():
     count = 0
     while True:
         count += 1
-        image_bytes = redis_client.rpop(FRAME_QUEUE, 5)
+        image_bytes = redis_client.rpop(INPUT_QUEUE, 5)
         if image_bytes:
             idle_count = 0
 
@@ -60,10 +58,9 @@ def process_frames():
                 results = model.process_batch(imgs)
                 redis_client.lpush("image_bytes", *image_bytes)
                 serialized_results = serialize_results(results)
-                redis_client.lpush("detections", *serialized_results)
+                redis_client.lpush(OUTPUT_QUEUE, *serialized_results)
 
         else:
-            # timer.print_summary()
             idle_count += 1
             print("Kuyruk boş, bekleniyor...")
             time.sleep(1)

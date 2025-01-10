@@ -6,7 +6,7 @@ import time
 
 REDIS_HOST = "localhost"
 REDIS_PORT = 6379
-DETECTION_QUEUE = "detections"
+INPUT_QUEUE = "detections"
 redis_client = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT)
 
 sensitivity = 0.2
@@ -22,7 +22,7 @@ converted_label = {1: 1, 2: 2, 3: 2, 4: 2, 6: 2, 8: 2, 18: 3, 19: 3, 20: 3, 21: 
 
 def process_dets():
     while True:
-        detection_bytes = redis_client.rpop(DETECTION_QUEUE)
+        detection_bytes = redis_client.rpop(INPUT_QUEUE)
 
         if detection_bytes:
             detection = json.loads(detection_bytes)
