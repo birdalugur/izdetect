@@ -103,11 +103,6 @@ async def get_image(
     return FileResponse(file_path)
 
 
-@app.get("/camurl")
-async def send_camera_url():
-    return {"url": CAMERA_URL}
-
-
 @app.post("/start-detection")
 async def start_detection():
     try:

@@ -72,32 +72,6 @@
             addMessage(stopMessage);
         }
     };
-
-    const showCamera = async () => {
-        startMessage = "";
-        try {
-            const response = await fetch("http://localhost:8000/camurl", {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-            });
-            const data = await response.json();
-            if (response.ok) {
-                cameraUrls.set({
-                    cameraUrl2: data.url,
-                });
-                startMessage = "Camera URL retrieved successfully.";
-            } else {
-                startMessage = `Could not retrieve camera URL: ${data.error || response.statusText}`;
-            }
-        } catch (error) {
-            startMessage = `Error: ${error.message}`;
-        } finally {
-            isStarting = false;
-            addMessage(startMessage);
-        }
-    };
 </script>
 
 <div class="upload-container">
@@ -129,14 +103,6 @@
         disabled={isStopping}
     >
         {isStopping ? "Stopping..." : "Stop Detection"}
-    </button>
-
-    <button
-        class="button show-button"
-        on:click={showCamera}
-        disabled={isStopping}
-    >
-        {isStopping ? "Stopping..." : "Show Camera"}
     </button>
 </div>
 
@@ -181,10 +147,6 @@
     .start-button:disabled {
         background-color: #6c757d;
         cursor: not-allowed;
-    }
-
-    .show-button {
-        background-color: powderblue;
     }
 
     .stop-frame-producer {
