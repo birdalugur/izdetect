@@ -7,12 +7,21 @@ import notify
 
 
 def start_frame_producer():
-    producer = frame_producer.FrameProcessor(output_queue="frames_camera1", url_key="camera_url")
+    producer = frame_producer.FrameProcessor(
+        output_queue="frames_camera1", url_key="camera_url"
+    )
     producer.capture_frames(encoding_method="binary")
 
 
 def start_frame_consumer():
-    inference.process_frames()
+    redis_client = inference.RedisClient(host="localhost", port=6379)
+    frame_processor = inference.FrameProcessor(
+        redis_client=redis_client,
+        input_queue="frames_camera1",
+        output_queue="detections",
+        image_bytes_queue="image_bytes",
+    )
+    frame_processor.process_frames()
 
 
 def start_tracking():
