@@ -121,6 +121,17 @@ async def start_detection():
         raise HTTPException(status_code=500, detail=f"Failed to set camera URL: {e}")
 
 
+@app.post("/stop-detection")
+async def stop_detection():
+    try:
+        redis_client.set("stop_signal", "1")
+        return {"message": "Frame producer stopped successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to stop frame producer: {e}"
+        )
+
+
 # SSE endpoint
 @app.get("/events")
 async def get_events(request: Request):

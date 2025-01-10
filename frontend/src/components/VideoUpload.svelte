@@ -47,6 +47,32 @@
         }
     };
 
+    const stopRealTimeDetection = async () => {
+        isStopping = true;
+        stopMessage = "Stopping frame producer...";
+        addMessage(stopMessage);
+
+        try {
+            const response = await fetch(
+                "http://localhost:8000/stop-detection",
+                {
+                    method: "POST",
+                },
+            );
+            const data = await response.json();
+            if (response.ok) {
+                stopMessage = data.message;
+            } else {
+                stopMessage = `Could not stop: ${data.error || response.statusText}`;
+            }
+        } catch (error) {
+            stopMessage = `Error: ${error.message}`;
+        } finally {
+            isStopping = false;
+            addMessage(stopMessage);
+        }
+    };
+
     const showCamera = async () => {
         startMessage = "";
         try {
@@ -122,6 +148,14 @@
     </button>
 
     <button
+        class="button stop-frame-producer"
+        on:click={stopRealTimeDetection}
+        disabled={isStopping}
+    >
+        {isStopping ? "Stopping..." : "Stop Detection"}
+    </button>
+
+    <button
         class="button stop-button"
         on:click={stopRealTimeVideo}
         disabled={isStopping}
@@ -190,6 +224,15 @@
     }
 
     .stop-button:disabled {
+        background-color: #6c757d;
+        cursor: not-allowed;
+    }
+
+    .stop-frame-producer {
+        background-color: #d9534f;
+        color: white;
+    }
+    .stop-frame-producer:disabled {
         background-color: #6c757d;
         cursor: not-allowed;
     }
