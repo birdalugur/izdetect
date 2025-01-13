@@ -25,7 +25,15 @@ def start_frame_consumer():
 
 
 def start_tracking():
-    tracking.process_dets()
+    processor = tracking.DetectionProcessor(
+        redis_host="localhost",
+        redis_port=6379,
+        input_queue="detections",
+        output_queue="detection_ids",
+        sensitivity=0.2,
+        memory=5,
+    )
+    processor.process_detections()
 
 
 def start_notification():

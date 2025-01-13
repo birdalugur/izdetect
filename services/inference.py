@@ -1,25 +1,12 @@
 import uuid
-import redis
 import time
 import numpy as np
 import cv2
 import model
 import utils
 import json
-from typing import List, Dict, Union
-
-
-class RedisClient:
-    def __init__(self, host: str, port: int):
-        self.client = redis.StrictRedis(host=host, port=port)
-
-    def pop_from_queue(
-        self, queue_name: str, count: int = 1
-    ) -> Union[bytes, List[bytes]]:
-        return self.client.rpop(queue_name, count)
-
-    def push_to_queue(self, queue_name: str, items: List[bytes]) -> None:
-        self.client.lpush(queue_name, *items)
+from typing import List, Dict
+from redis_client import RedisClient
 
 
 class ImageProcessor:
