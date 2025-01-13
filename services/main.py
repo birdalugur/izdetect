@@ -37,7 +37,7 @@ def start_tracking():
 
 
 def start_notification():
-    notify.notify_objects()
+    notify.notify_objects(image_queue="image_bytes", detection_queue="detection_ids")
 
 
 if __name__ == "__main__":
