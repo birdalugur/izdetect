@@ -33,6 +33,12 @@ def start_tracking():
         sensitivity=0.2,
         memory=5,
     )
+
+    settings_thread = threading.Thread(
+        target=tracking.watch_settings, args=(processor,), daemon=True
+    )
+    settings_thread.start()
+    processor.process_detections()
     processor.process_detections()
 
 

@@ -26,6 +26,3 @@ class ProcessingTimer:
         print(f"Total time: {total_time:.2f} seconds")
         for key, elapsed in self.times.items():
             print(f"Total {key} time: {elapsed:.2f} seconds")
-
-
-            

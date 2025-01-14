@@ -6,6 +6,33 @@ from sort import Sort
 from redis_client import RedisClient
 
 
+def watch_settings(processor):
+    while True:
+        try:
+            memory = int(
+                processor.redis_client.client.get("tracking:memory") or processor.memory
+            )
+            sensitivity = float(
+                processor.redis_client.client.get("tracking:sensitivity")
+                or processor.sensitivity
+            )
+
+            if memory != processor.memory or sensitivity != processor.sensitivity:
+                processor.memory = memory
+                processor.sensitivity = sensitivity
+                processor.min_hits = int(1 + sensitivity * 4)
+                processor.iou_threshold = 0.5 - (sensitivity * 0.4)
+                processor.tracker = Sort(
+                    max_age=memory,
+                    min_hits=processor.min_hits,
+                    iou_threshold=processor.iou_threshold,
+                )
+                print(f"Settings updated: memory={memory}, sensitivity={sensitivity}")
+        except Exception as e:
+            print(f"Error watching settings: {e}")
+        time.sleep(3)
+
+
 class LabelConverter:
     def __init__(self):
         self.converted_label_map = {
@@ -49,6 +76,8 @@ class DetectionProcessor:
 
     def process_detections(self):
         while True:
+            print("memory:", self.memory)
+            print("sensitivity:", self.sensitivity)
             detection_bytes = self.redis_client.pop_from_queue(self.input_queue)
 
             if detection_bytes:
@@ -93,4 +122,9 @@ if __name__ == "__main__":
         sensitivity=0.2,
         memory=5,
     )
+
+    from threading import Thread
+
+    settings_thread = Thread(target=watch_settings, args=(processor,), daemon=True)
+    settings_thread.start()
     processor.process_detections()
