@@ -3,6 +3,7 @@ import cv2
 from fastapi import FastAPI, HTTPException, Path, Request
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import uvicorn
 
 
@@ -188,6 +189,21 @@ async def video_feed():
     return StreamingResponse(
         generate_frames(), media_type="multipart/x-mixed-replace; boundary=frame"
     )
+
+
+class Settings(BaseModel):
+    memory: int
+    sensitivity: float
+
+
+@app.post("/update-settings")
+async def update_settings(settings: Settings):
+    try:
+        redis_client.set("tracking:memory", settings.memory)
+        redis_client.set("tracking:sensitivity", settings.sensitivity)
+        return {"message": "Settings updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update settings: {e}")
 
 
 if __name__ == "__main__":
