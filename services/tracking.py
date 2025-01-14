@@ -1,53 +1,96 @@
 import json
-import redis
-import sort as sort_tracking
 import numpy as np
 import time
-
-REDIS_HOST = "localhost"
-REDIS_PORT = 6379
-DETECTION_QUEUE = "detections"
-redis_client = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT)
-
-sensitivity = 0.2
-memory = 5
-min_hits = int(1 + sensitivity * 4)
-iou_threshold = 0.5 - (sensitivity * 0.4)
-sort_tracker = sort_tracking.Sort(
-    max_age=memory, min_hits=min_hits, iou_threshold=iou_threshold
-)
-
-converted_label = {1: 1, 2: 2, 3: 2, 4: 2, 6: 2, 8: 2, 18: 3, 19: 3, 20: 3, 21: 3}
+from typing import List
+from sort import Sort
+from redis_client import RedisClient
 
 
-def process_dets():
-    while True:
-        detection_bytes = redis_client.rpop(DETECTION_QUEUE)
+class LabelConverter:
+    def __init__(self):
+        self.converted_label_map = {
+            1: 1,
+            2: 2,
+            3: 2,
+            4: 2,
+            6: 2,
+            8: 2,
+            18: 3,
+            19: 3,
+            20: 3,
+            21: 3,
+        }
 
-        if detection_bytes:
-            detection = json.loads(detection_bytes)
-            dets = np.array(
-                [
-                    box + [score]
-                    for box, score in zip(detection["boxes"], detection["scores"])
-                ]
-            )
+    def convert_labels(self, labels: List[int]) -> List[int]:
+        return [self.converted_label_map.get(label, label) for label in labels]
 
-            labels = np.array(detection["labels"])
-            converted_labels = [converted_label.get(label, label) for label in labels]
-            detection_ids = sort_tracker.update(dets=dets, labels=converted_labels)
-            detection_ids_list = detection_ids.tolist()
 
-            for row in detection_ids_list:
-                row[-2] = int(row[-2])
-                row[-1] = int(row[-1])
+class DetectionProcessor:
+    def __init__(
+        self,
+        redis_host: str,
+        redis_port: int,
+        input_queue: str,
+        output_queue: str,
+        sensitivity: float,
+        memory: int,
+    ):
+        self.redis_client = RedisClient(host=redis_host, port=redis_port)
+        self.label_converter = LabelConverter()
+        self.input_queue = input_queue
+        self.output_queue = output_queue
+        self.sensitivity = sensitivity
+        self.memory = memory
+        self.min_hits = int(1 + sensitivity * 4)
+        self.iou_threshold = 0.5 - (sensitivity * 0.4)
+        self.tracker = Sort(
+            max_age=memory, min_hits=self.min_hits, iou_threshold=self.iou_threshold
+        )
 
-            detection_ids_json = json.dumps(detection_ids_list)
-            redis_client.lpush("detection_ids", detection_ids_json)
-        else:
-            print("Kuyruk boş, bekleniyor...")
-            time.sleep(2)
+    def process_detections(self):
+        while True:
+            detection_bytes = self.redis_client.pop_from_queue(self.input_queue)
+
+            if detection_bytes:
+                detection = json.loads(detection_bytes[0])
+                dets = np.array(
+                    [
+                        box + [score]
+                        for box, score in zip(detection["boxes"], detection["scores"])
+                    ]
+                )
+
+                converted_labels = self.label_converter.convert_labels(
+                    detection["labels"]
+                )
+                detection_ids = self.tracker.update(dets=dets, labels=converted_labels)
+                detection_ids_list = self.format_detection_ids(detection_ids)
+
+                self.redis_client.push_to_queue(
+                    self.output_queue, [json.dumps(detection_ids_list).encode()]
+                )
+            else:
+                print("Queue is empty, waiting...")
+                time.sleep(2)
+
+    @staticmethod
+    def format_detection_ids(detection_ids: np.ndarray) -> List[List[int]]:
+        return [
+            [
+                int(value) if idx >= len(row) - 2 else value
+                for idx, value in enumerate(row)
+            ]
+            for row in detection_ids.tolist()
+        ]
 
 
 if __name__ == "__main__":
-    process_dets()
+    processor = DetectionProcessor(
+        redis_host="localhost",
+        redis_port=6379,
+        input_queue="detections",
+        output_queue="detection_ids",
+        sensitivity=0.2,
+        memory=5,
+    )
+    processor.process_detections()

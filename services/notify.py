@@ -14,11 +14,11 @@ notified_object_ids = set()
 selected_label = {1, 2, 3, 4, 6, 8, 18, 19, 20, 21}
 
 
-def notify_objects():
+def notify_objects(image_queue: str, detection_queue: str):
     count = 0
     while True:
-        _, image_bytes = r.brpop("image_bytes", timeout=0)
-        _, detection_ids_bytes = r.brpop("detection_ids", timeout=0)
+        _, image_bytes = r.brpop(image_queue, timeout=0)
+        _, detection_ids_bytes = r.brpop(detection_queue, timeout=0)
 
         if image_bytes and detection_ids_bytes:
             detection_ids = json.loads(detection_ids_bytes)
@@ -45,7 +45,7 @@ def notify_objects():
                     {str(label_id): count} for label_id, count in label_counts.items()
                 ]
 
-                unique_id = str(uuid.uuid4()) + '.jpg'
+                unique_id = str(uuid.uuid4()) + ".jpg"
                 image_path = f"data/{unique_id}"
                 cv2.imwrite(image_path, image_array)
 
@@ -53,10 +53,10 @@ def notify_objects():
                 frame_count = count
                 # TODO: frame_time degeri frame okundugu zamana ait olmali
                 frame_time = datetime.timestamp(datetime.now())
-                add_notification(frame_count, labels, unique_id, frame_time)
+                _ = add_notification(frame_count, labels, unique_id, frame_time)
 
             count += 1
 
 
 if __name__ == "__main__":
-    notify_objects()
+    notify_objects(image_queue="image_bytes", detection_queue="detection_ids")
