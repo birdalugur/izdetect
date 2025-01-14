@@ -5,7 +5,7 @@ import cv2
 from datetime import datetime
 from collections import Counter
 from utils import draw_detection_with_det, decode_img
-from db import add_notification_toDB
+from db import add_notification
 
 r = redis.StrictRedis(host="localhost", port=6379, decode_responses=False)
 
@@ -53,7 +53,7 @@ def notify_objects(image_queue: str, detection_queue: str):
                 frame_count = count
                 # TODO: frame_time degeri frame okundugu zamana ait olmali
                 frame_time = datetime.timestamp(datetime.now())
-                _ = add_notification_toDB(frame_count, labels, unique_id, frame_time)
+                _ = add_notification(frame_count, labels, unique_id, frame_time)
 
             count += 1
 

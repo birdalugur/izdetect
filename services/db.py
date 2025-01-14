@@ -63,21 +63,9 @@ def prepare_notification_data(
     }
 
 
-def add_notification_toDB(
+def add_notification(
     frame_count: int, labels: List[dict], image_url: str, frame_time: float
 ) -> str:
-    """
-    Yeni bir notification kaydi oluşturur ve MongoDB'ye ekler.
-
-    Args:
-        frame_count (int): Frame sayisi
-        labels (List[dict]): Etiketler
-        image_url (str): Resim URL'si
-        frame_time (float): Zaman damgasi
-
-    Returns:
-        str: Eklenen belgenin MongoDB ID'si
-    """
     record = Notification(
         frame_count=frame_count,
         labels=labels,
@@ -86,11 +74,11 @@ def add_notification_toDB(
     )
 
     insert_data = record.model_dump(by_alias=True, exclude={"id"})
-    result = notifications_collection.insert_one(insert_data)
+    _ = notifications_collection.insert_one(insert_data)
 
     asyncio.run(publish_to_redis(insert_data))
 
-    return str(result.inserted_id)
+    return insert_data
 
 
 if __name__ == "__main__":
@@ -100,7 +88,7 @@ if __name__ == "__main__":
     image_url = "http://example.com/image.jpg"
     frame_time = datetime.timestamp(datetime.now())
 
-    notification_id = add_notification_toDB(
+    notification_id = add_notification(
         frame_count, formatted_labels, image_url, frame_time
     )
     print("Inserted ID:", notification_id)
