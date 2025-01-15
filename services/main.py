@@ -13,7 +13,7 @@ def start_frame_producer():
     producer.capture_frames(encoding_method="binary")
 
 
-def start_frame_consumer():
+def start_inference():
     redis_client = inference.RedisClient(host="localhost", port=6379)
     frame_processor = inference.FrameProcessor(
         redis_client=redis_client,
@@ -39,7 +39,6 @@ def start_tracking():
     )
     settings_thread.start()
     processor.process_detections()
-    processor.process_detections()
 
 
 def start_notification():
@@ -54,7 +53,7 @@ if __name__ == "__main__":
     ]
 
     threads = [
-        threading.Thread(target=start_frame_consumer, daemon=True),
+        threading.Thread(target=start_inference, daemon=True),
     ]
 
     for process in processes:
