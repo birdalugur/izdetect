@@ -21,6 +21,7 @@ class Notification(BaseModel):
     image_url: str
     time: datetime
     status: str = "active"
+    camera_id: int
     id: str = Field(default_factory=lambda: str(ObjectId()), alias="id")
 
     class Config:
@@ -46,12 +47,12 @@ def prepare_notification_data(
     time: float,
     status: str,
     _id: str,
+    camera_id: str,  # Yeni alan
 ) -> dict:
-    mapped_labels = []
-    for label in labels:
-        mapped_labels.append(
-            {selected_label_map.get(int(k), k): v for k, v in label.items()}
-        )
+    mapped_labels = [
+        {selected_label_map.get(int(k), k): v for k, v in label.items()}
+        for label in labels
+    ]
 
     return {
         "_id": str(_id),
@@ -60,17 +61,20 @@ def prepare_notification_data(
         "image_url": image_url,
         "time": time.isoformat(),
         "status": status,
+        "camera_id": camera_id,  # Yeni alan
     }
 
 
 def add_notification(
-    frame_count: int, labels: List[dict], image_url: str, frame_time: float
+    frame_count: int, labels: List[dict], image_url: str, frame_time: float, camera_id: str
 ) -> str:
     record = Notification(
         frame_count=frame_count,
         labels=labels,
         image_url=image_url,
         time=datetime.fromtimestamp(frame_time),
+        status="active",
+        camera_id=camera_id,  # Yeni alan
     )
 
     insert_data = record.model_dump(by_alias=True, exclude={"id"})

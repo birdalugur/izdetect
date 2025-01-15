@@ -35,11 +35,11 @@ class FrameProducer:
             if new_video_source and new_video_source != self.video_source:
                 self.video_source = new_video_source
                 print(f"New camera URL received: {self.video_source}")
-                self.redis_client.delete("camera_url")
+                self.redis_client.delete(self.url_key)
 
             if not self.video_source:
                 print("Waiting for a valid camera URL...")
-                time.sleep(1)
+                time.sleep(0.2)
                 continue
 
             # Start capturing frames
@@ -49,6 +49,7 @@ class FrameProducer:
 
             while True:
                 if self.check_stop_signal():
+                    print("Stop sinyali alindi.")
                     break
                 ret, frame = cap.read()
                 if not ret:

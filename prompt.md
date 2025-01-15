@@ -1,207 +1,154 @@
-aşağıdaki kodlar birbirlerinden bağımsız olarak çalışmaktadır. (tracking.py fastapi projesine ait değil ayrı bir servis olarak çalışmakta).
-web sayfasının sol tarafında svelte ile kodlanmış Control bölümü vardır. 
-Memory Value ve Sensitivity değerleri tracking.py'e iletilmesi gerekmektedir. Değişiklik olduğunda çalışan tracking.py bu değişikliği algılayabilmelidir.
-bunun için aşağıdaki işlemleri gerçekleştir:
+verilen talimatlara göre kodu güncelle veya yeni özellikler ekle.
 
-1. api.py'e yeni bir endpoint ekle.
-2. Control svelte'ye, eklediğin endpoint'e post işlemi yap.
-3. tracking.py'de ilgili değişkenleri al, değişikliği handle et.
+açıklama:
+aşağıda kodları verilen sistem video karelerini yakalar, bu kareler içindeki nesneleri tespit eder, nesneleri kareler arasında izler ve belirli nesne kategorilerinin tespit edilmesi durumunda bildirimler üretir. ikinci bir kamera kaynağını bu sisteme dahil edilmesi isteniyor.
 
-api.py:
-import asyncio
+talimatlar:
+- her kamera kaynağının işlemi kendi processinde çalışmalıdır.
+- kuyruk yapılarını dinamik hale getir.
+- çoklu kamera senaryosunda karmaşaya yol açabilecek kod kısımlarını belirle ve bunları daha esnek ve geliştirilebilir hale getir.
+- her bildirimin hangi kamera kaynağından geldiği bilinmelidir.
+
+kodlar:
+frame_producer.py:
 import cv2
-from fastapi import FastAPI, HTTPException, Path, Request
-from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
-from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
-
-
 import redis
-import aioredis
-
-import os
-from db import (
-    get_active_notifications,
-    close_notification,
-    clear_all_notifications,
-    get_statistics,
-)
+import time
+from processing_timer import ProcessingTimer
+from image_processor import ImageProcessor
 
 
-OUTPUT_FOLDER = os.path.abspath("data/")
-CAMERA_URL = "http://10.100.10.94/axis-cgi/mjpg/video.cgi?resolution=1280x800&fps=10"
-RTSP_URL = "rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10"
-
-os.makedirs(OUTPUT_FOLDER, exist_ok=True)
-
-app = FastAPI()
-
-# CORS Middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:8080", "http://localhost:3000"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-    allow_credentials=True,
-)
-
-# Redis bağlanti bilgileri
-REDIS_HOST = "localhost"
-REDIS_PORT = 6379
-CHANNEL_NAME = "event_channel"
-redis_client = redis.StrictRedis(
-    host=REDIS_HOST, port=REDIS_PORT, decode_responses=True
-)
-
-
-selected_label_map = {1: "insan", 2: "arac", 3: "hayvan"}
-
-
-# Endpoints
-
-
-@app.get("/")
-async def index():
-    return {"message": "Welcome to the Object Detector!"}
-
-
-@app.get("/notifications")
-async def get_notifications():
-    notifications = get_active_notifications()
-
-    # labels alanini eşle
-    for notification in notifications:
-        mapped_labels = []
-        for label_obj in notification.get("labels", []):
-            mapped_label = {
-                selected_label_map.get(int(k), k): v for k, v in label_obj.items()
-            }
-            mapped_labels.append(mapped_label)
-        notification["labels"] = mapped_labels
-
-    return JSONResponse(notifications)
-
-
-@app.post("/notifications/{notification_id}/close")
-async def close_notification_route(
-    notification_id: int = Path(..., description="The ID of the notification to close"),
-):
-    if close_notification(notification_id) == 0:
-        raise HTTPException(status_code=404, detail="Notification not found")
-    return {"message": "Notification closed successfully"}
-
-
-@app.get("/statistics")
-async def get_statistics_route():
-    stats = get_statistics()
-    return JSONResponse(content=stats, status_code=200)
-
-
-@app.post("/notifications/clear-all")
-async def clear_all_notifications_route():
-    modified_count = clear_all_notifications()
-    return {"message": f"{modified_count} bildirim kapatildi"}
-
-
-@app.get("/output/{filename}")
-async def get_image(
-    filename: str = Path(..., description="The name of the file to retrieve"),
-):
-    file_path = os.path.join(OUTPUT_FOLDER, filename)
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(file_path)
-
-
-@app.post("/start-detection")
-async def start_detection():
-    try:
-        redis_client.set("camera_url", RTSP_URL)
-        return {
-            "message": "Camera URL set successfully",
-            "camera_url": RTSP_URL,
-            "default_camera_url": CAMERA_URL,
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to set camera URL: {e}")
-
-
-@app.post("/stop-detection")
-async def stop_detection():
-    try:
-        redis_client.set("stop_signal", "1")
-        return {"message": "Frame producer stopped successfully"}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to stop frame producer: {e}"
+class FrameProducer:
+    def __init__(self, output_queue, url_key, redis_host="localhost", redis_port=6379):
+        self.redis_host = redis_host
+        self.redis_port = redis_port
+        self.output_queue = output_queue
+        self.url_key = url_key
+        self.redis_client = redis.StrictRedis(
+            host=self.redis_host, port=self.redis_port, decode_responses=True
         )
+        self.video_source = None
+        self.timer = ProcessingTimer()
 
+    def get_camera_url(self):
+        return self.redis_client.get(self.url_key)
 
-# SSE endpoint
-@app.get("/events")
-async def get_events(request: Request):
-    async def redis_event_generator():
-        # Redis bağlantisini aç
-        redis = await aioredis.from_url(f"redis://{REDIS_HOST}:{REDIS_PORT}")
-        pubsub = redis.pubsub()
+    def check_stop_signal(self):
+        stop_signal = self.redis_client.get("stop_signal")
+        if stop_signal == "1":
+            self.redis_client.delete("stop_signal")
+            print("Stop signal received. Halting frame processing.")
+            return True
+        return False
 
-        try:
-            # Redis kanalini dinlemeye başla
-            await pubsub.subscribe(CHANNEL_NAME)
+    def capture_frames(self, encoding_method="binary"):
+        while True:
+            # Check for new camera URL
+            new_video_source = self.get_camera_url()
+            if new_video_source and new_video_source != self.video_source:
+                self.video_source = new_video_source
+                print(f"New camera URL received: {self.video_source}")
+                self.redis_client.delete("camera_url")
+
+            if not self.video_source:
+                print("Waiting for a valid camera URL...")
+                time.sleep(1)
+                continue
+
+            # Start capturing frames
+            cap = cv2.VideoCapture(self.video_source)
+            no_frame_count = 0
+            self.timer.start("read")
 
             while True:
-                # Eğer istemci bağlantiyi kapattiysa döngüden çik
-                if await request.is_disconnected():
+                if self.check_stop_signal():
                     break
+                ret, frame = cap.read()
+                if not ret:
+                    no_frame_count += 1
+                    print("No frames from camera, retrying...")
+                    time.sleep(0.1)
+                    if no_frame_count >= 5:
+                        print("Camera disconnected, switching to URL wait mode.")
+                        self.timer.stop("read")
+                        self.timer.print_summary()
+                        self.video_source = None
+                        break
+                    continue
+                else:
+                    no_frame_count = 0
 
-                # Redis kanalindan mesaj al
-                message = await pubsub.get_message(
-                    ignore_subscribe_messages=True, timeout=1
+                image_bytes = ImageProcessor.encode_img(
+                    frame, encoding_method=encoding_method
                 )
-                if message:
-                    yield f"data: {message['data'].decode('utf-8')}\n\n"
-        finally:
-            # Kaynaklari temizle
-            await pubsub.unsubscribe(CHANNEL_NAME)
-            await pubsub.close()
-            await redis.close()
+                self.redis_client.lpush(self.output_queue, image_bytes)
 
-    # StreamingResponse ile istemciye veri gönder
-    return StreamingResponse(redis_event_generator(), media_type="text/event-stream")
+            # Release the camera and wait for a new URL
+            cap.release()
+            self.video_source = None
+            print("All frames processed. Waiting for a new camera URL...")
+            while not self.get_camera_url():
+                time.sleep(1)
 
 
-def generate_frames():
-    cap = cv2.VideoCapture(RTSP_URL)
-    if not cap.isOpened():
-        print("RTSP akişina bağlanilamadi.")
-        return
+inference.py:
+import time
+import model
+from typing import List
+from redis_client import RedisClient
+from image_processor import ImageProcessor
 
-    while True:
-        success, frame = cap.read()
-        if not success:
-            print("Görüntü alinamadi.")
-            break
 
-        _, buffer = cv2.imencode(".jpg", frame)
-        frame_bytes = buffer.tobytes()
+class Inference:
+    def __init__(
+        self,
+        redis_client: RedisClient,
+        input_queue: str,
+        output_queue: str,
+        image_bytes_queue: str,
+    ):
+        self.redis_client = redis_client
+        self.input_queue = input_queue
+        self.output_queue = output_queue
+        self.image_bytes_queue = image_bytes_queue
+        self.idle_count = 0
 
-        yield (
-            b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
+    def process_single_frame(self, image_bytes: bytes):
+        """Processes a single image frame."""
+        image = ImageProcessor.decode_image(image_bytes)
+        detections = model.process_frame(image)
+        ImageProcessor.save_image_with_detections(image, detections)
+        self.redis_client.push_to_queue(self.image_bytes_queue, [image_bytes])
+
+    def process_batch_frames(self, image_bytes_list: List[bytes]):
+        """Processes a batch of image frames."""
+        images = ImageProcessor.decode_image_batch(image_bytes_list)
+        detection_results = model.process_batch(images)
+        serialized_results = ImageProcessor.serialize_detection_results(
+            detection_results
         )
+        self.redis_client.push_to_queue(self.output_queue, serialized_results)
+        self.redis_client.push_to_queue(self.image_bytes_queue, image_bytes_list)
 
-    cap.release()
+    def start(self):
+        """Main loop to process frames from the Redis queue."""
+        while True:
+            image_bytes = self.redis_client.pop_from_queue(self.input_queue, 5)
 
+            if image_bytes:
+                self.idle_count = 0
+                if isinstance(image_bytes, bytes):
+                    self.process_single_frame(image_bytes)
+                elif isinstance(image_bytes, list):
+                    self.process_batch_frames(image_bytes)
+            else:
+                self.idle_count += 1
+                print("Queue is empty, waiting...")
+                time.sleep(1)
 
-@app.get("/video")
-async def video_feed():
-    """Tarayiciya MJPEG akişi döndür."""
-    return StreamingResponse(
-        generate_frames(), media_type="multipart/x-mixed-replace; boundary=frame"
-    )
-
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+                if self.idle_count >= 5:
+                    print("Queue is empty, entering sleep mode.")
+                    time.sleep(5)
 
 tracking.py:
 import json
@@ -210,6 +157,33 @@ import time
 from typing import List
 from sort import Sort
 from redis_client import RedisClient
+
+
+def watch_settings(processor):
+    while True:
+        try:
+            memory = int(
+                processor.redis_client.client.get("tracking:memory") or processor.memory
+            )
+            sensitivity = float(
+                processor.redis_client.client.get("tracking:sensitivity")
+                or processor.sensitivity
+            )
+
+            if memory != processor.memory or sensitivity != processor.sensitivity:
+                processor.memory = memory
+                processor.sensitivity = sensitivity
+                processor.min_hits = int(1 + sensitivity * 4)
+                processor.iou_threshold = 0.5 - (sensitivity * 0.4)
+                processor.tracker = Sort(
+                    max_age=memory,
+                    min_hits=processor.min_hits,
+                    iou_threshold=processor.iou_threshold,
+                )
+                print(f"Settings updated: memory={memory}, sensitivity={sensitivity}")
+        except Exception as e:
+            print(f"Error watching settings: {e}")
+        time.sleep(3)
 
 
 class LabelConverter:
@@ -255,6 +229,8 @@ class DetectionProcessor:
 
     def process_detections(self):
         while True:
+            print("memory:", self.memory)
+            print("sensitivity:", self.sensitivity)
             detection_bytes = self.redis_client.pop_from_queue(self.input_queue)
 
             if detection_bytes:
@@ -290,8 +266,180 @@ class DetectionProcessor:
         ]
 
 
-if __name__ == "__main__":
-    processor = DetectionProcessor(
+notify.py:
+import redis
+import json
+import uuid
+import cv2
+from datetime import datetime
+from collections import Counter
+from utils import draw_detection_with_det, decode_img
+from db import add_notification
+
+r = redis.StrictRedis(host="localhost", port=6379, decode_responses=False)
+
+notified_object_ids = set()
+
+selected_label = {1, 2, 3, 4, 6, 8, 18, 19, 20, 21}
+
+
+def notify_objects(image_queue: str, detection_queue: str):
+    count = 0
+    while True:
+        _, image_bytes = r.brpop(image_queue, timeout=0)
+        _, detection_ids_bytes = r.brpop(detection_queue, timeout=0)
+
+        if image_bytes and detection_ids_bytes:
+            detection_ids = json.loads(detection_ids_bytes)
+
+            # Hem notified_object_ids kontrolü hem de selected_label kontrolü
+            filtered_detection_ids = [
+                det
+                for det in detection_ids
+                if det[-2] not in notified_object_ids and det[-1] in selected_label
+            ]
+
+            if filtered_detection_ids:
+                image_array = decode_img(image_bytes)
+                for det in filtered_detection_ids:
+                    det_id = det[-2]
+                    if det_id not in notified_object_ids:
+                        notified_object_ids.add(det_id)
+                        draw_detection_with_det(image_array, det)
+                    else:
+                        continue
+
+                label_counts = Counter(det[-1] for det in filtered_detection_ids)
+                labels = [
+                    {str(label_id): count} for label_id, count in label_counts.items()
+                ]
+
+                unique_id = str(uuid.uuid4()) + ".jpg"
+                image_path = f"data/{unique_id}"
+                cv2.imwrite(image_path, image_array)
+
+                # TODO: count degeri frame okundugundaki değer olmali
+                frame_count = count
+                # TODO: frame_time degeri frame okundugu zamana ait olmali
+                frame_time = datetime.timestamp(datetime.now())
+                _ = add_notification(frame_count, labels, unique_id, frame_time)
+
+            count += 1
+
+db.py:
+from pydantic import BaseModel, Field
+from pymongo import MongoClient
+from bson.objectid import ObjectId
+from datetime import datetime
+from typing import List
+
+import aioredis
+import asyncio
+import json
+
+
+client = MongoClient("mongodb://localhost:27017/")
+db = client["object_detection"]
+notifications_collection = db["notifications"]
+selected_label_map = {1: "insan", 2: "arac", 3: "hayvan"}
+
+
+class Notification(BaseModel):
+    frame_count: int
+    labels: List[dict]
+    image_url: str
+    time: datetime
+    status: str = "active"
+    id: str = Field(default_factory=lambda: str(ObjectId()), alias="id")
+
+    class Config:
+        populate_by_name = True
+
+
+async def publish_to_redis(data):
+    data = prepare_notification_data(**data)
+
+    redis = await aioredis.from_url("redis://localhost:6379")
+    try:
+        message = json.dumps(data)
+        await redis.publish("event_channel", message)
+        await asyncio.sleep(0.1)
+    finally:
+        await redis.close()
+
+
+def prepare_notification_data(
+    frame_count: int,
+    labels: List[dict],
+    image_url: str,
+    time: float,
+    status: str,
+    _id: str,
+) -> dict:
+    mapped_labels = []
+    for label in labels:
+        mapped_labels.append(
+            {selected_label_map.get(int(k), k): v for k, v in label.items()}
+        )
+
+    return {
+        "_id": str(_id),
+        "frame_count": frame_count,
+        "labels": mapped_labels,
+        "image_url": image_url,
+        "time": time.isoformat(),
+        "status": status,
+    }
+
+
+def add_notification(
+    frame_count: int, labels: List[dict], image_url: str, frame_time: float
+) -> str:
+    record = Notification(
+        frame_count=frame_count,
+        labels=labels,
+        image_url=image_url,
+        time=datetime.fromtimestamp(frame_time),
+    )
+
+    insert_data = record.model_dump(by_alias=True, exclude={"id"})
+    _ = notifications_collection.insert_one(insert_data)
+
+    asyncio.run(publish_to_redis(insert_data))
+
+    return insert_data
+
+
+main.py:
+from multiprocessing import Process
+import threading
+import frame_producer
+import inference
+import tracking
+import notify
+from  redis_client import RedisClient
+
+
+def start_frame_producer():
+    producer = frame_producer.FrameProducer(
+        output_queue="frames_camera1", url_key="camera_url"
+    )
+    producer.capture_frames(encoding_method="binary")
+
+
+def start_inference():
+    redis_client = RedisClient(host="localhost", port=6379)
+    frame_processor = inference.Inference(
+        redis_client=redis_client,
+        input_queue="frames_camera1",
+        output_queue="detections",
+        image_bytes_queue="image_bytes",
+    )
+    frame_processor.start()
+
+
+def start_tracking():
+    processor = tracking.DetectionProcessor(
         redis_host="localhost",
         redis_port=6379,
         input_queue="detections",
@@ -299,166 +447,37 @@ if __name__ == "__main__":
         sensitivity=0.2,
         memory=5,
     )
+
+    settings_thread = threading.Thread(
+        target=tracking.watch_settings, args=(processor,), daemon=True
+    )
+    settings_thread.start()
     processor.process_detections()
 
-Control.svelte:
-<script>
-    import { cameraUrls, clearCameraUrls } from "./store";
 
-    export let addMessage;
+def start_notification():
+    notify.notify_objects(image_queue="image_bytes", detection_queue="detection_ids")
 
-    let isStarting = false;
-    let startMessage = "";
-    let isStopping = false;
-    let stopMessage = "";
 
-    let memoryValue = 5;
-    let sensitivityValue = 0.2;
+if __name__ == "__main__":
+    processes = [
+        Process(target=start_frame_producer),
+        Process(target=start_tracking),
+        Process(target=start_notification),
+    ]
 
-    const startRealTimeDetection = async () => {
-        isStarting = true;
-        startMessage = "Starting real-time video processing...";
-        addMessage(startMessage);
+    threads = [
+        threading.Thread(target=start_inference, daemon=True),
+    ]
 
-        try {
-            const response = await fetch(
-                "http://localhost:8000/start-detection",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        memory: memoryValue,
-                        sensitivity: sensitivityValue,
-                    }),
-                },
-            );
-            const data = await response.json();
-            if (response.ok) {
-                startMessage = data.message;
-                cameraUrls.set({
-                    cameraUrl2: data.default_camera_url,
-                });
-            } else {
-                startMessage = Could not start: ${data.error || response.statusText};
-            }
-        } catch (error) {
-            startMessage = Error: ${error.message};
-        } finally {
-            isStarting = false;
-            addMessage(startMessage);
-        }
-    };
+    for process in processes:
+        process.start()
 
-    const stopRealTimeDetection = async () => {
-        isStopping = true;
-        stopMessage = "Stopping frame producer...";
-        addMessage(stopMessage);
+    for thread in threads:
+        thread.start()
 
-        try {
-            const response = await fetch(
-                "http://localhost:8000/stop-detection",
-                {
-                    method: "POST",
-                },
-            );
-            const data = await response.json();
-            if (response.ok) {
-                stopMessage = data.message;
-            } else {
-                stopMessage = Could not stop: ${data.error || response.statusText};
-            }
-        } catch (error) {
-            stopMessage = Error: ${error.message};
-        } finally {
-            isStopping = false;
-            addMessage(stopMessage);
-        }
-    };
-</script>
+    for process in processes:
+        process.join()
 
-<div class="upload-container">
-    <div class="config-inputs">
-        <label for="memory">Memory Value: {memoryValue}</label>
-        <input type="range" bind:value={memoryValue} min="1" max="100" />
-
-        <label for="sensitivityValue">Sensitivity: {sensitivityValue}</label>
-        <input
-            type="range"
-            bind:value={sensitivityValue}
-            step="0.1"
-            min="0.1"
-            max="0.9"
-        />
-    </div>
-
-    <button
-        class="button start-button"
-        on:click={startRealTimeDetection}
-        disabled={isStarting}
-    >
-        {isStarting ? "Starting..." : "Start Detection"}
-    </button>
-
-    <button
-        class="button stop-frame-producer"
-        on:click={stopRealTimeDetection}
-        disabled={isStopping}
-    >
-        {isStopping ? "Stopping..." : "Stop Detection"}
-    </button>
-</div>
-
-<style>
-    .config-inputs {
-        margin-top: 20px;
-        text-align: left;
-    }
-
-    label {
-        display: block;
-        margin-bottom: 10px;
-    }
-
-    input[type="range"] {
-        width: 100%;
-        margin-bottom: 20px;
-    }
-
-    .upload-container {
-        text-align: left;
-        margin-top: 5px;
-    }
-
-    .button {
-        display: block;
-        width: 100%;
-        margin-top: 10px;
-        padding: 10px 20px;
-        font-size: 16px;
-        text-align: center;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-    }
-
-    .start-button {
-        background-color: #7898dd;
-        color: white;
-    }
-
-    .start-button:disabled {
-        background-color: #6c757d;
-        cursor: not-allowed;
-    }
-
-    .stop-frame-producer {
-        background-color: #d9534f;
-        color: white;
-    }
-    .stop-frame-producer:disabled {
-        background-color: #6c757d;
-        cursor: not-allowed;
-    }
-</style>
+    for thread in threads:
+        thread.join()
