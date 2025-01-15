@@ -1,54 +1,11 @@
-import uuid
 import time
-import numpy as np
-import cv2
 import model
-import utils
-import json
-from typing import List, Dict
+from typing import List
 from redis_client import RedisClient
+from image_processor import ImageProcessor
 
 
-class ImageProcessor:
-    @staticmethod
-    def decode_image(image_bytes: bytes) -> np.ndarray:
-        """Decodes a single image from bytes."""
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-    @staticmethod
-    def decode_image_batch(image_bytes_list: List[bytes]) -> List[np.ndarray]:
-        """Decodes a batch of images."""
-        return [
-            ImageProcessor.decode_image(image_bytes) for image_bytes in image_bytes_list
-        ]
-
-    @staticmethod
-    def serialize_detection_results(results: List[Dict[str, any]]) -> List[str]:
-        """Serializes detection results for Redis storage."""
-        serialized_results = []
-        for result in results:
-            serialized_result = {
-                "scores": result["scores"].cpu().tolist(),
-                "labels": result["labels"].cpu().tolist(),
-                "boxes": result["boxes"].cpu().tolist(),
-            }
-            serialized_results.append(json.dumps(serialized_result))
-        return serialized_results
-
-    @staticmethod
-    def save_image_with_detections(
-        image: np.ndarray, detections: Dict[str, any], output_dir: str = "output"
-    ) -> str:
-        """Draws detections on the image and saves it."""
-        image_with_detections = utils.draw_detections(image, detections)
-        unique_id = str(uuid.uuid4())
-        output_path = f"{output_dir}/{unique_id}.jpg"
-        cv2.imwrite(output_path, image_with_detections)
-        return output_path
-
-
-class FrameProcessor:
+class Inference:
     def __init__(
         self,
         redis_client: RedisClient,
@@ -79,7 +36,7 @@ class FrameProcessor:
         self.redis_client.push_to_queue(self.output_queue, serialized_results)
         self.redis_client.push_to_queue(self.image_bytes_queue, image_bytes_list)
 
-    def process_frames(self):
+    def start(self):
         """Main loop to process frames from the Redis queue."""
         while True:
             image_bytes = self.redis_client.pop_from_queue(self.input_queue, 5)
@@ -102,15 +59,10 @@ class FrameProcessor:
 
 if __name__ == "__main__":
     redis_client = RedisClient(host="localhost", port=6379)
-    frame_processor = FrameProcessor(
+    inference = Inference(
         redis_client=redis_client,
         input_queue="frames_camera1",
         output_queue="detections",
         image_bytes_queue="image_bytes",
     )
-    frame_processor.process_frames()
-
-    # frame_packet = pickle.loads(frame_data[1])
-    # frame_number = frame_packet["frame_number"]
-    # frame = np.frombuffer(frame_packet["frame_data"], dtype=np.uint8)
-    # frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+    inference.start()
