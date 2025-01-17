@@ -1,5 +1,6 @@
 from typing import List, Dict, Union
 import redis
+import json
 
 
 class RedisClient:
@@ -13,3 +14,12 @@ class RedisClient:
 
     def push_to_queue(self, queue_name: str, items: List[bytes]) -> None:
         self.client.lpush(queue_name, *items)
+
+
+def publish_to_redis(data):
+    redis_client = redis.Redis(host="localhost", port=6379, decode_responses=True)
+    try:
+        message = json.dumps(data, default=str)
+        redis_client.publish("event_channel", message)
+    except Exception as e:
+        print(f"Error publishing to Redis: {e}")

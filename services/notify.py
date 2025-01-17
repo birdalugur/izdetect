@@ -6,6 +6,7 @@ from datetime import datetime
 from collections import Counter
 from utils import draw_detection_with_det, decode_img
 from db import add_notification, Record
+from redis_client import publish_to_redis
 
 r = redis.StrictRedis(host="localhost", port=6379, decode_responses=False)
 
@@ -65,7 +66,8 @@ def notify_objects(image_queue: str, detection_queue: str, camera_id: int):
                     time=frame_time,
                     camera_id=camera_id,
                 )
-                _ = add_notification(record=record)
+                inserted_data = add_notification(record=record)
+                publish_to_redis(inserted_data)
 
             count += 1
 
