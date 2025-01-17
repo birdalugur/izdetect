@@ -5,13 +5,14 @@ import cv2
 from datetime import datetime
 from collections import Counter
 from utils import draw_detection_with_det, decode_img
-from db import add_notification
+from db import add_notification, Record
 
 r = redis.StrictRedis(host="localhost", port=6379, decode_responses=False)
 
 notified_object_ids = {}
 
 selected_label = {1, 2, 3, 4, 6, 8, 18, 19, 20, 21}
+
 
 def notify_objects(image_queue: str, detection_queue: str, camera_id: int):
     # Initialize object IDs set for the specific camera
@@ -30,7 +31,8 @@ def notify_objects(image_queue: str, detection_queue: str, camera_id: int):
             filtered_detection_ids = [
                 det
                 for det in detection_ids
-                if det[-2] not in notified_object_ids[camera_id] and det[-1] in selected_label
+                if det[-2] not in notified_object_ids[camera_id]
+                and det[-1] in selected_label
             ]
 
             if filtered_detection_ids:
@@ -55,9 +57,20 @@ def notify_objects(image_queue: str, detection_queue: str, camera_id: int):
                 # Use frame count and timestamp for notifications
                 frame_count = count
                 frame_time = datetime.timestamp(datetime.now())
-                _ = add_notification(frame_count, labels, unique_id, frame_time, camera_id)
+
+                record = Record(
+                    frame_count=frame_count,
+                    labels=labels,
+                    image_url=unique_id,
+                    time=frame_time,
+                    camera_id=camera_id,
+                )
+                _ = add_notification(record=record)
 
             count += 1
 
+
 if __name__ == "__main__":
-    notify_objects(image_queue="image_bytes", detection_queue="detection_ids", camera_id=1)
+    notify_objects(
+        image_queue="image_bytes", detection_queue="detection_ids", camera_id=1
+    )
