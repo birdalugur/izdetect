@@ -139,7 +139,7 @@
                     alt="Thumbnail"
                     class="thumbnail"
                 />
-                <p>{notification.time}</p>
+                <p>{notification.time.split('.')[0]}</p>
             </div>
         {/each}
     </div>
