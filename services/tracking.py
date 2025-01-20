@@ -76,8 +76,6 @@ class DetectionProcessor:
 
     def process_detections(self):
         while True:
-            print("memory:", self.memory)
-            print("sensitivity:", self.sensitivity)
             detection_bytes = self.redis_client.pop_from_queue(self.input_queue)
 
             if detection_bytes:

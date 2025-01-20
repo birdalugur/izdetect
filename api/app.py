@@ -1,11 +1,10 @@
-import asyncio
+import json
 import cv2
 from fastapi import FastAPI, HTTPException, Path, Request
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
-
 
 import redis
 import aioredis
@@ -17,7 +16,6 @@ from db import (
     clear_all_notifications,
     get_statistics,
 )
-
 
 OUTPUT_FOLDER = os.path.abspath("data/")
 CAMERA_URL = "http://10.100.10.94/axis-cgi/mjpg/video.cgi?resolution=1280x800&fps=10"
@@ -44,8 +42,17 @@ redis_client = redis.StrictRedis(
     host=REDIS_HOST, port=REDIS_PORT, decode_responses=True
 )
 
-
 selected_label_map = {1: "insan", 2: "arac", 3: "hayvan"}
+
+
+def map_labels(notification, label_map):
+    """Bildirimdeki `labels` alanini eşleyen yardimci fonksiyon."""
+    mapped_labels = []
+    for label_obj in notification.get("labels", []):
+        mapped_label = {label_map.get(int(k), k): v for k, v in label_obj.items()}
+        mapped_labels.append(mapped_label)
+    notification["labels"] = mapped_labels
+    return notification
 
 
 # Endpoints
@@ -61,14 +68,9 @@ async def get_notifications():
     notifications = get_active_notifications()
 
     # `labels` alanini eşle
-    for notification in notifications:
-        mapped_labels = []
-        for label_obj in notification.get("labels", []):
-            mapped_label = {
-                selected_label_map.get(int(k), k): v for k, v in label_obj.items()
-            }
-            mapped_labels.append(mapped_label)
-        notification["labels"] = mapped_labels
+    notifications = [
+        map_labels(notification, selected_label_map) for notification in notifications
+    ]
 
     return JSONResponse(notifications)
 
@@ -150,7 +152,10 @@ async def get_events(request: Request):
                     ignore_subscribe_messages=True, timeout=1
                 )
                 if message:
-                    yield f"data: {message['data'].decode('utf-8')}\n\n"
+                    message_data = json.loads(message["data"])
+                    message_data = map_labels(message_data, selected_label_map)
+                    yield f"data: {json.dumps(message_data)}\n\n"                    
+                    # yield f"data: {message['data'].decode('utf-8')}\n\n"
         finally:
             # Kaynaklari temizle
             await pubsub.unsubscribe(CHANNEL_NAME)

@@ -4,24 +4,25 @@ import frame_producer
 import inference
 import tracking
 import notify
+from  redis_client import RedisClient
 
 
 def start_frame_producer():
-    producer = frame_producer.FrameProcessor(
+    producer = frame_producer.FrameProducer(
         output_queue="frames_camera1", url_key="camera_url"
     )
     producer.capture_frames(encoding_method="binary")
 
 
 def start_inference():
-    redis_client = inference.RedisClient(host="localhost", port=6379)
-    frame_processor = inference.FrameProcessor(
+    redis_client = RedisClient(host="localhost", port=6379)
+    frame_processor = inference.Inference(
         redis_client=redis_client,
         input_queue="frames_camera1",
         output_queue="detections",
         image_bytes_queue="image_bytes",
     )
-    frame_processor.process_frames()
+    frame_processor.start()
 
 
 def start_tracking():
@@ -42,7 +43,7 @@ def start_tracking():
 
 
 def start_notification():
-    notify.notify_objects(image_queue="image_bytes", detection_queue="detection_ids")
+    notify.notify_objects(image_queue="image_bytes", detection_queue="detection_ids", camera_id=2)
 
 
 if __name__ == "__main__":

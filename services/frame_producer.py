@@ -1,12 +1,11 @@
 import cv2
 import redis
 import time
-import numpy as np
 from processing_timer import ProcessingTimer
-import base64
+from image_processor import ImageProcessor
 
 
-class FrameProcessor:
+class FrameProducer:
     def __init__(self, output_queue, url_key, redis_host="localhost", redis_port=6379):
         self.redis_host = redis_host
         self.redis_port = redis_port
@@ -18,18 +17,8 @@ class FrameProcessor:
         self.video_source = None
         self.timer = ProcessingTimer()
 
-    def get_camera_url(self,):
+    def get_camera_url(self):
         return self.redis_client.get(self.url_key)
-
-    def encode_img(self, image_frame: np.ndarray, encoding_method="binary") -> bytes:
-        _, buffer = cv2.imencode(".jpg", image_frame)
-        if encoding_method == "base64":
-            frame_encoded = base64.b64encode(buffer).decode("utf-8")
-            return frame_encoded.encode("utf-8")
-        elif encoding_method == "binary":
-            return buffer.tobytes()
-        else:
-            raise ValueError("Unsupported encoding method. Use 'binary' or 'base64'.")
 
     def check_stop_signal(self):
         stop_signal = self.redis_client.get("stop_signal")
@@ -46,11 +35,11 @@ class FrameProcessor:
             if new_video_source and new_video_source != self.video_source:
                 self.video_source = new_video_source
                 print(f"New camera URL received: {self.video_source}")
-                self.redis_client.delete("camera_url")
+                self.redis_client.delete(self.url_key)
 
             if not self.video_source:
                 print("Waiting for a valid camera URL...")
-                time.sleep(1)
+                time.sleep(0.2)
                 continue
 
             # Start capturing frames
@@ -60,6 +49,7 @@ class FrameProcessor:
 
             while True:
                 if self.check_stop_signal():
+                    print("Stop sinyali alindi.")
                     break
                 ret, frame = cap.read()
                 if not ret:
@@ -76,7 +66,9 @@ class FrameProcessor:
                 else:
                     no_frame_count = 0
 
-                image_bytes = self.encode_img(frame, encoding_method=encoding_method)
+                image_bytes = ImageProcessor.encode_img(
+                    frame, encoding_method=encoding_method
+                )
                 self.redis_client.lpush(self.output_queue, image_bytes)
 
             # Release the camera and wait for a new URL
@@ -88,6 +80,6 @@ class FrameProcessor:
 
 
 if __name__ == "__main__":
-    processor = FrameProcessor(output_queue="frames_camera1", url_key="camera_url")
+    processor = FrameProducer(output_queue="frames_camera1", url_key="camera_url")
     processor.capture_frames(encoding_method="binary")
     # set camera_url rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10
