@@ -9,9 +9,6 @@
         notifications = data;
     };
 
-
-
-
     fetchNotifications();
 
     const removeNotification = async (id) => {
@@ -275,6 +272,7 @@
         text-align: center;
         opacity: 0;
         animation: fadeInScale 0.3s ease-out forwards;
+        z-index: 1000;
     }
 
     @keyframes fadeInScale {
