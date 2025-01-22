@@ -37,6 +37,8 @@
     {/if}
 </div>
 
+
+
 <style>
     .camera-container {
         position: relative;

@@ -5,6 +5,10 @@ import terser from '@rollup/plugin-terser';
 import resolve from '@rollup/plugin-node-resolve';
 import livereload from 'rollup-plugin-livereload';
 import css from 'rollup-plugin-css-only';
+import tailwindcss from 'tailwindcss';
+import autoprefixer from 'autoprefixer';
+import postcss from 'rollup-plugin-postcss';
+
 
 const production = !process.env.ROLLUP_WATCH;
 
@@ -46,7 +50,11 @@ export default {
 		}),
 		// we'll extract any component CSS out into
 		// a separate file - better for performance
-		css({ output: 'bundle.css' }),
+		// css({ output: 'bundle.css' }),
+		postcss({
+			extract: "bundle.css",
+			plugins: [tailwindcss(), autoprefixer()],
+		}),
 
 		// If you have external dependencies installed from
 		// npm, you'll most likely need these plugins. In

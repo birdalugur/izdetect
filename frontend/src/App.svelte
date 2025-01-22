@@ -12,70 +12,16 @@
     };
 </script>
 
-<main>
-    <div class="left-panel">
+<main class="flex h-[99vh] bg-gray-100">
+    <div class="w-1/5 bg-white p-5 flex flex-col gap-5">
         <Control {addMessage} />
         <!-- <Statistics /> -->
         <Messages {messages} />
     </div>
-    <div class="center-panel">
+    <div class="w-2/5 p-2 bg-gray-50">
         <LiveCamera />
     </div>
-    <div class="right-panel">
+    <div class="w-2/5 p-5 bg-gray-50 overflow-y-auto flex flex-col gap-2.5">
         <Notifications />
     </div>
 </main>
-
-<style>
-    main {
-        display: flex;
-        height: 99vh;
-        background-color: #f0f0f0;
-    }
-
-    .left-panel {
-        width: 20%;
-        background-color: #ffffff;
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 20px; /* Add space between Control and Statistics */
-    }
-
-    .center-panel {
-        width: 40%;
-        padding: 10px;
-        background-color: #f9f9f9;
-        /* display: flex; */
-        /* align-items: center; */
-        /* justify-content: center; */
-        /* overflow-y: auto;
-        position: relative; For absolute positioning of message box */
-    }
-    .right-panel {
-        width: 40%;
-        padding: 20px;
-        background-color: #f9f9f9;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-    /* .video-feed {
-        width: 100%;
-
-        height: 100%;
-
-        background-color: #cccccc;
-
-        display: flex;
-
-        align-items: center;
-
-        justify-content: center;
-
-        border-radius: 8px;
-
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    } */
-</style>
