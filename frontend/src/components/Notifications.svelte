@@ -9,9 +9,6 @@
         notifications = data;
     };
 
-
-
-
     fetchNotifications();
 
     const removeNotification = async (id) => {
@@ -129,20 +126,23 @@
                 on:click={() =>
                     showImage(notification.image_url, notification._id)}
             >
-                <h4>
+                <div class="notification-details">
                     {#each notification.labels as label}
                         {#each Object.entries(label) as [key, value]}
-                            <div>{key}: {value}</div>
+                            <div class="detail">
+                                <span class="detail-key">{key}</span>:
+                                <span class="detail-value">{value}</span>
+                            </div>
                         {/each}
                     {/each}
-                </h4>
+                </div>
                 <img
                     src={"http://localhost:8000/output/" +
                         notification.image_url}
                     alt="Thumbnail"
                     class="thumbnail"
                 />
-                <p>{notification.time}</p>
+                <p class="time">{notification.time.split(".")[0]}</p>
             </div>
         {/each}
     </div>
@@ -275,6 +275,7 @@
         text-align: center;
         opacity: 0;
         animation: fadeInScale 0.3s ease-out forwards;
+        z-index: 1000;
     }
 
     @keyframes fadeInScale {
@@ -290,5 +291,37 @@
 
     .image-viewer button:hover {
         background: #ccc;
+    }
+    .notification-details {
+        display: flex;
+        justify-content: space-between;
+        margin: 10px 0;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    .detail {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        padding: 4px;
+        background: #eef4fb;
+        border: 1px solid #d1e2f5;
+        border-radius: 4px;
+    }
+
+    .detail-key {
+        color: #2b6cb0;
+    }
+
+    .detail-value {
+        color: #1a202c;
+        font-weight: normal;
+    }
+
+    .time {
+        margin-top: 10px;
+        color: #718096;
+        font-size: 12px;
     }
 </style>

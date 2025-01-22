@@ -1,5 +1,5 @@
 <script>
-    import VideoUpload from "./components/VideoUpload.svelte";
+    import Control from "./components/Control.svelte";
     import Notifications from "./components/Notifications.svelte";
     import Statistics from "./components/Statistics.svelte";
     import Messages from "./components/Messages.svelte";
@@ -14,7 +14,7 @@
 
 <main>
     <div class="left-panel">
-        <VideoUpload {addMessage} />
+        <Control {addMessage} />
         <!-- <Statistics /> -->
         <Messages {messages} />
     </div>
@@ -39,7 +39,7 @@
         padding: 20px;
         display: flex;
         flex-direction: column;
-        gap: 20px; /* Add space between VideoUpload and Statistics */
+        gap: 20px; /* Add space between Control and Statistics */
     }
 
     .center-panel {
