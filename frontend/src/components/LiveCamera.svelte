@@ -1,6 +1,5 @@
 <script>
     import { cameraUrls } from "./store";
-    import { onMount } from "svelte";
 
     let urls;
     cameraUrls.subscribe((value) => {
@@ -36,8 +35,6 @@
         </div>
     {/if}
 </div>
-
-
 
 <style>
     .camera-container {

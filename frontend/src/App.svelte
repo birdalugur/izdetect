@@ -4,6 +4,7 @@
     import Statistics from "./components/Statistics.svelte";
     import Messages from "./components/Messages.svelte";
     import LiveCamera from "./components/LiveCamera.svelte";
+    import Timeline from "./components/Timeline.svelte";
 
     let messages = [];
 
@@ -17,6 +18,7 @@
         <Control {addMessage} />
         <!-- <Statistics /> -->
         <Messages {messages} />
+        <!-- <Timeline /> -->
     </div>
     <div class="w-2/5 p-2 bg-gray-50">
         <LiveCamera />

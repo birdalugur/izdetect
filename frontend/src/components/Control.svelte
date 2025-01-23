@@ -104,8 +104,8 @@
     };
 </script>
 
-<div class="bg-gray-100 p-6 rounded-lg shadow-lg max-w-md mx-auto mt-10">
-    <h2 class="text-2xl font-bold text-gray-800 mb-4">Real-Time Detection</h2>
+<div class="bg-gray-100 p-6 rounded-lg shadow-lg max-w-md mx-auto mt-0">
+    <h2 class="text-2xl font-bold text-gray-800 mb-4">Control Pannel</h2>
     <div class="space-y-4">
         <div>
             <label for="memory" class="block text-gray-600 font-medium mb-1"
