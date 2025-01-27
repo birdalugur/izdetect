@@ -5,12 +5,17 @@ import inference
 import tracking
 import notify
 from redis_client import RedisClient
+import redis
+
 
 def start_frame_producer(output_queue, url_key):
+    redis_client = redis.StrictRedis(host="localhost", port=6379, decode_responses=True)
+
     producer = frame_producer.FrameProducer(
-        output_queue=output_queue, url_key=url_key
+        output_queue=output_queue, url_key=url_key, redis_client=redis_client
     )
     producer.capture_frames(encoding_method="binary")
+
 
 def start_inference(input_queue, output_queue, image_bytes_queue):
     redis_client = RedisClient(host="localhost", port=6379)
@@ -21,6 +26,7 @@ def start_inference(input_queue, output_queue, image_bytes_queue):
         image_bytes_queue=image_bytes_queue,
     )
     frame_processor.start()
+
 
 def start_tracking(input_queue, output_queue, camera_id):
     processor = tracking.DetectionProcessor(
@@ -38,24 +44,36 @@ def start_tracking(input_queue, output_queue, camera_id):
     settings_thread.start()
     processor.process_detections()
 
+
 def start_notification(image_queue, detection_queue, camera_id):
-    notify.notify_objects(image_queue=image_queue, detection_queue=detection_queue, camera_id=camera_id)
+    notify.notify_objects(
+        image_queue=image_queue, detection_queue=detection_queue, camera_id=camera_id
+    )
+
 
 if __name__ == "__main__":
     # Kamera kaynaklarını ve kuyruk yapılarını tanımlayın
     cameras = [
-        {"id": 1, "url_key": "camera_url", "queues": {
-            "frames": "frames_camera1",
-            "detections": "detections_camera1",
-            "image_bytes": "image_bytes_camera1",
-            "detection_ids": "detection_ids_camera1"
-        }},
-        {"id": 2, "url_key": "camera2_url", "queues": {
-            "frames": "frames_camera2",
-            "detections": "detections_camera2",
-            "image_bytes": "image_bytes_camera2",
-            "detection_ids": "detection_ids_camera2"
-        }}
+        {
+            "id": 1,
+            "url_key": "camera_url",
+            "queues": {
+                "frames": "frames_camera1",
+                "detections": "detections_camera1",
+                "image_bytes": "image_bytes_camera1",
+                "detection_ids": "detection_ids_camera1",
+            },
+        },
+        {
+            "id": 2,
+            "url_key": "camera2_url",
+            "queues": {
+                "frames": "frames_camera2",
+                "detections": "detections_camera2",
+                "image_bytes": "image_bytes_camera2",
+                "detection_ids": "detection_ids_camera2",
+            },
+        },
     ]
 
     processes = []
