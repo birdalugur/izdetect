@@ -1,4 +1,6 @@
 import App from './App.svelte';
+import './App.css'; // TailwindCSS'in yer aldığı dosya
+
 
 
 const app = new App({

@@ -6,14 +6,10 @@ from image_processor import ImageProcessor
 
 
 class FrameProducer:
-    def __init__(self, output_queue, url_key, redis_host="localhost", redis_port=6379):
-        self.redis_host = redis_host
-        self.redis_port = redis_port
+    def __init__(self, output_queue, url_key, redis_client: redis.StrictRedis):
+        self.redis_client = redis_client
         self.output_queue = output_queue
         self.url_key = url_key
-        self.redis_client = redis.StrictRedis(
-            host=self.redis_host, port=self.redis_port, decode_responses=True
-        )
         self.video_source = None
         self.timer = ProcessingTimer()
 
@@ -80,6 +76,7 @@ class FrameProducer:
 
 
 if __name__ == "__main__":
-    processor = FrameProducer(output_queue="frames_camera1", url_key="camera_url")
+    redis_client = redis.StrictRedis(host="localhost", port=6379, decode_responses=True)
+    processor = FrameProducer(output_queue="frames_camera1", url_key="camera_url", redis_client=redis_client)
     processor.capture_frames(encoding_method="binary")
     # set camera_url rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10

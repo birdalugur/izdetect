@@ -89,30 +89,32 @@
 </script>
 
 <div class="head">
-    <h3>Notifications</h3>
+    <form
+        class="mt-0 mx-auto max-w-xl py-0 px-2 rounded-full bg-gray-50 border flex focus-within:border-gray-300"
+    >
+        <input
+            type="text"
+            placeholder="Filter by label"
+            class="bg-transparent w-full focus:outline-none pr-4 font-semibold border-0 focus:ring-0 px-0 py-0"
+            name="topic"
+        /><button
+            class="flex flex-row items-center justify-center min-w-[130px] px-4 rounded-full font-medium tracking-wide border disabled:cursor-not-allowed disabled:opacity-50 transition ease-in-out duration-150 text-base bg-black text-white font-medium tracking-wide border-transparent py-1.5 h-[38px] -mr-3"
+        >
+            Search
+        </button>
+    </form>
+
     <button
         class="clear-all-btn"
         on:click={removeAllNotifications}
         title="Clear All Notifications"
     >
         <!-- Çöp kutusu simgesi SVG, kırmızı renkte ve dolgusuz olarak -->
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            fill="none"
-            stroke="red"
-            stroke-width="1.5"
-            class="bi bi-trash"
-            viewBox="0 0 16 16"
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"
+            ><!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.--><path
+                d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.7 23.7 0 0 0 -21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0 -16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"
+            /></svg
         >
-            <path
-                d="M5.5 5.5a.5.5 0 0 1 .5-.5H10a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-.5.5H6a.5.5 0 0 1-.5-.5v-8z"
-            />
-            <path
-                d="M11 4a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5zm-5.118 0L6 3.118V3.5a.5.5 0 0 1 1 0V3.118L10.118 4H11a1 1 0 0 1 1 1v.5a.5.5 0 0 1-1 0V5H5.118L5 5.5a.5.5 0 0 1-1 0V5c0-.276.112-.5.5-.5z"
-            />
-        </svg>
     </button>
 </div>
 
@@ -191,15 +193,10 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        background-color: rgb(187, 201, 211);
-        border: 1px solid black;
+        /*border: 1px solid black;*/
         border-radius: 5px;
         padding: 5px;
-        text-align: center;
-    }
-
-    h3 {
-        margin: 0;
+        height: 50px; /* Yüksekliği sabitleyin */
     }
 
     .clear-all-btn {

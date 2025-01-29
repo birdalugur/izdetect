@@ -4,9 +4,22 @@
 
 <div class="message-box">
     <h3>Messages</h3>
+
     <ul>
         {#each messages as message}
-            <li>{message}</li>
+            <li>
+                <div
+                    class="mt-2 bg-teal-500 text-sm text-white rounded-lg p-4"
+                    role="alert"
+                    tabindex="-1"
+                    aria-labelledby="hs-solid-color-success-label"
+                >
+                    <span id="hs-solid-color-success-label" class="font-bold"
+                        >Success</span
+                    >
+                    {message}
+                </div>
+            </li>
         {/each}
     </ul>
 </div>
@@ -21,8 +34,8 @@
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         width: 100%;
-        max-height: 155px;  /* Set a maximum height */
-        overflow-y: auto;  /* Enable scrolling when content exceeds height */
+        max-height: 155px; /* Set a maximum height */
+        overflow-y: auto; /* Enable scrolling when content exceeds height */
     }
 
     .message-box h3 {

@@ -104,87 +104,54 @@
     };
 </script>
 
-<div class="upload-container">
-    <div class="config-inputs">
-        <label for="memory">Memory Value: {memoryValue}</label>
-        <input type="range" bind:value={memoryValue} min="1" max="100" />
+<div class="bg-gray-100 p-6 rounded-lg shadow-lg max-w-md mx-auto mt-0">
+    <h2 class="text-2xl font-bold text-gray-800 mb-4">Control Pannel</h2>
+    <div class="space-y-4">
+        <div>
+            <label for="memory" class="block text-gray-600 font-medium mb-1"
+                >Memory Value: {memoryValue}</label
+            >
+            <input
+                type="range"
+                bind:value={memoryValue}
+                min="1"
+                max="100"
+                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+            />
+        </div>
 
-        <label for="sensitivityValue">Sensitivity: {sensitivityValue}</label>
-        <input
-            type="range"
-            bind:value={sensitivityValue}
-            step="0.1"
-            min="0.1"
-            max="0.9"
-        />
+        <div>
+            <label
+                for="sensitivityValue"
+                class="block text-gray-600 font-medium mb-1"
+                >Sensitivity: {sensitivityValue}</label
+            >
+            <input
+                type="range"
+                bind:value={sensitivityValue}
+                step="0.1"
+                min="0.1"
+                max="0.9"
+                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+            />
+        </div>
+
+        <button
+            on:click={startRealTimeDetection}
+            disabled={isStarting}
+            class={`w-full py-2 px-4 text-white font-semibold rounded-lg shadow-md transition 
+            ${isStarting ? "bg-gray-400 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"}`}
+        >
+            {isStarting ? "Starting..." : "Start Detection"}
+        </button>
+
+        <button
+            on:click={stopRealTimeDetection}
+            disabled={isStopping}
+            class={`w-full py-2 px-4 text-white font-semibold rounded-lg shadow-md transition 
+            ${isStopping ? "bg-gray-400 cursor-not-allowed" : "bg-red-500 hover:bg-red-600"}`}
+        >
+            {isStopping ? "Stopping..." : "Stop Detection"}
+        </button>
     </div>
-
-    <button
-        class="button start-button"
-        on:click={startRealTimeDetection}
-        disabled={isStarting}
-    >
-        {isStarting ? "Starting..." : "Start Detection"}
-    </button>
-
-    <button
-        class="button stop-frame-producer"
-        on:click={stopRealTimeDetection}
-        disabled={isStopping}
-    >
-        {isStopping ? "Stopping..." : "Stop Detection"}
-    </button>
 </div>
-
-<style>
-    .config-inputs {
-        margin-top: 20px;
-        text-align: left;
-    }
-
-    label {
-        display: block;
-        margin-bottom: 10px;
-    }
-
-    input[type="range"] {
-        width: 100%;
-        margin-bottom: 20px;
-    }
-
-    .upload-container {
-        text-align: left;
-        margin-top: 5px;
-    }
-
-    .button {
-        display: block;
-        width: 100%;
-        margin-top: 10px;
-        padding: 10px 20px;
-        font-size: 16px;
-        text-align: center;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-    }
-
-    .start-button {
-        background-color: #7898dd;
-        color: white;
-    }
-
-    .start-button:disabled {
-        background-color: #6c757d;
-        cursor: not-allowed;
-    }
-
-    .stop-frame-producer {
-        background-color: #d9534f;
-        color: white;
-    }
-    .stop-frame-producer:disabled {
-        background-color: #6c757d;
-        cursor: not-allowed;
-    }
-</style>
