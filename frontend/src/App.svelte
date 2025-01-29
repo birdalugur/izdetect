@@ -17,7 +17,7 @@
     <div class="w-1/5 bg-white p-5 flex flex-col gap-5">
         <Control {addMessage} />
         <!-- <Statistics /> -->
-        <Messages {messages} />
+        <!-- <Messages {messages} /> -->
         <!-- <Timeline /> -->
     </div>
     <div class="w-2/5 p-2 bg-gray-50">

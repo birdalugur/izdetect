@@ -94,7 +94,7 @@
     >
         <input
             type="text"
-            placeholder="Search anything"
+            placeholder="Filter by label"
             class="bg-transparent w-full focus:outline-none pr-4 font-semibold border-0 focus:ring-0 px-0 py-0"
             name="topic"
         /><button
@@ -193,7 +193,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border: 1px solid black;
+        /*border: 1px solid black;*/
         border-radius: 5px;
         padding: 5px;
         height: 50px; /* Yüksekliği sabitleyin */
