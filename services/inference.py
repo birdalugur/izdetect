@@ -1,14 +1,14 @@
 import time
 import model
 from typing import List
-from redis_client import RedisClient
+import redis
 from image_processor import ImageProcessor
 
 
 class Inference:
     def __init__(
         self,
-        redis_client: RedisClient,
+        redis_client: redis.Redis,
         input_queue: str,
         output_queue: str,
         image_bytes_queue: str,
@@ -33,13 +33,13 @@ class Inference:
         serialized_results = ImageProcessor.serialize_detection_results(
             detection_results
         )
-        self.redis_client.push_to_queue(self.output_queue, serialized_results)
-        self.redis_client.push_to_queue(self.image_bytes_queue, image_bytes_list)
+        self.redis_client.lpush(self.output_queue, *serialized_results)
+        self.redis_client.lpush(self.image_bytes_queue, *image_bytes_list)
 
     def start(self):
         """Main loop to process frames from the Redis queue."""
         while True:
-            image_bytes = self.redis_client.pop_from_queue(self.input_queue, 5)
+            image_bytes = self.redis_client.rpop(self.input_queue, 5)
 
             if image_bytes:
                 self.idle_count = 0
@@ -58,7 +58,7 @@ class Inference:
 
 
 if __name__ == "__main__":
-    redis_client = RedisClient(host="localhost", port=6379)
+    redis_client = redis.Redis(host="localhost", port=6379, decode_responses=False)
     inference = Inference(
         redis_client=redis_client,
         input_queue="frames_camera1",

@@ -26,20 +26,13 @@ class FrameProducer:
 
     def capture_frames(self, encoding_method="binary"):
         while True:
-            # Check for new camera URL
-            new_video_source = self.get_camera_url()
-            if new_video_source and new_video_source != self.video_source:
-                self.video_source = new_video_source
-                print(f"New camera URL received: {self.video_source}")
-                self.redis_client.delete(self.url_key)
-
-            if not self.video_source:
-                print("Waiting for a valid camera URL...")
-                time.sleep(0.2)
+            if self.url_key is None:
+                time.sleep(2)
+                print("URL key is not set. Waiting for a valid key...")
                 continue
 
             # Start capturing frames
-            cap = cv2.VideoCapture(self.video_source)
+            cap = cv2.VideoCapture(self.url_key)
             no_frame_count = 0
             self.timer.start("read")
 

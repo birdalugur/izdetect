@@ -1,22 +1,23 @@
 <script>
     import Control from "./components/Control.svelte";
     import Notifications from "./components/Notifications.svelte";
-    import Statistics from "./components/Statistics.svelte";
-    import Messages from "./components/Messages.svelte";
+    import CamForm from "./components/CamForm.svelte";
     import LiveCamera from "./components/LiveCamera.svelte";
-    import Timeline from "./components/Timeline.svelte";
 
     let messages = [];
 
     const addMessage = (message) => {
         messages = [message, ...messages].slice(0, 5); // Prepend new message and keep only the last 5
     };
+
+    
+    
 </script>
 
 <main class="flex h-[99vh] bg-gray-100">
     <div class="w-1/5 bg-white p-5 flex flex-col gap-5">
         <Control {addMessage} />
-        <!-- <Statistics /> -->
+        <CamForm />
         <!-- <Messages {messages} /> -->
         <!-- <Timeline /> -->
     </div>

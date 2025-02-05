@@ -106,17 +106,26 @@ async def get_image(
     return FileResponse(file_path)
 
 
+ 
 @app.post("/start-detection")
 async def start_detection():
     try:
-        redis_client.set("camera_url", RTSP_URL)
-        return {
-            "message": "Camera URL set successfully",
-            "camera_url": RTSP_URL,
-            "default_camera_url": CAMERA_URL,
-        }
+        with open("cameras.json", "r") as f:
+            cameras = json.load(f)
+
+        rtsp_urls = [
+            f"rtsp://{cam['username']}:{cam['password']}@{cam['ip']}:{cam['port']}/axis-media/media.amp?adjustablelivestream=1&fps=10"
+            for cam in cameras
+        ]
+
+        redis_client.set("camera_urls", json.dumps(rtsp_urls))
+
+        return {"message": "Camera URLs set successfully", "rtsp_urls": rtsp_urls}
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="No cameras found")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to set camera URL: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to set camera URLs: {e}")
+
 
 
 @app.post("/stop-detection")
@@ -154,7 +163,7 @@ async def get_events(request: Request):
                 if message:
                     message_data = json.loads(message["data"])
                     message_data = map_labels(message_data, selected_label_map)
-                    yield f"data: {json.dumps(message_data)}\n\n"                    
+                    yield f"data: {json.dumps(message_data)}\n\n"
                     # yield f"data: {message['data'].decode('utf-8')}\n\n"
         finally:
             # Kaynaklari temizle
@@ -211,5 +220,45 @@ async def update_settings(settings: Settings):
         raise HTTPException(status_code=500, detail=f"Failed to update settings: {e}")
 
 
+class Camera(BaseModel):
+    ip: str
+    port: str
+    username: str
+    password: str
+
+
+camera_list = []
+
+
+@app.post("/set-cameras")
+async def set_cameras(cameras: list[Camera]):
+    global camera_list
+    camera_list = cameras
+
+    with open("cameras.json", "w") as f:
+        json.dump([cam.model_dump() for cam in camera_list], f, indent=4)
+
+    return {"message": "Kamera bilgileri kaydedildi!"}
+
+
+@app.get("/get-camera-urls")
+async def get_camera_urls():
+    try:
+        with open("cameras.json", "r") as f:
+            cameras = json.load(f)
+
+        camera_urls = [
+            {
+                "CAMERA_URL": f"http://{cam['ip']}:{cam['port']}/axis-cgi/mjpg/video.cgi?resolution=1280x800&fps=10",
+                "RTSP_URL": f"rtsp://{cam['username']}:{cam['password']}@{cam['ip']}:{cam['port']}/axis-media/media.amp?adjustablelivestream=1&fps=10",
+            }
+            for cam in cameras
+        ]
+
+        return camera_urls
+    except FileNotFoundError:
+        return []
+
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)

@@ -4,33 +4,64 @@ import frame_producer
 import inference
 import tracking
 import notify
-from  redis_client import RedisClient
+import redis
+import json
 
+REDIS_HOST = "localhost"
+REDIS_PORT = 6379
 
-def start_frame_producer():
-    producer = frame_producer.FrameProducer(
-        output_queue="frames_camera1", url_key="camera_url"
-    )
+redis_client = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+
+def get_cameras():
+    """Redis'ten kamera URL listesini çeker."""
+    try:
+        camera_urls = redis_client.get("camera_urls")
+        if not camera_urls:
+            return []
+        
+        camera_urls = json.loads(camera_urls)
+        cameras = []
+        
+        for idx, url in enumerate(camera_urls):
+            cameras.append({
+                "id": idx + 1,
+                "url_key": url,
+                # "rtsp_url": url,
+                "queues": {
+                    "frames": f"frames_camera_{idx+1}",
+                    "detections": f"detections_camera_{idx+1}",
+                    "image_bytes": f"image_bytes_camera_{idx+1}",
+                    "detection_ids": f"detection_ids_camera_{idx+1}",
+                },
+            })
+        
+        return cameras
+    except Exception as e:
+        print(f"Redis'ten kameraları alırken hata: {e}")
+        return []
+
+def start_frame_producer(output_queue, rtsp_url):
+    """Her kamera için frame üretimini başlatır."""
+    producer = frame_producer.FrameProducer(redis_client=redis_client, output_queue=output_queue, url_key=rtsp_url)
     producer.capture_frames(encoding_method="binary")
 
-
-def start_inference():
-    redis_client = RedisClient(host="localhost", port=6379)
+def start_inference(input_queue, output_queue, image_bytes_queue):
+    """Inference işlemini başlatır."""
     frame_processor = inference.Inference(
         redis_client=redis_client,
-        input_queue="frames_camera1",
-        output_queue="detections",
-        image_bytes_queue="image_bytes",
+        input_queue=input_queue,
+        output_queue=output_queue,
+        image_bytes_queue=image_bytes_queue,
     )
     frame_processor.start()
 
-
-def start_tracking():
+def start_tracking(input_queue, output_queue, camera_id):
+    """Tracking işlemini başlatır."""
     processor = tracking.DetectionProcessor(
-        redis_host="localhost",
-        redis_port=6379,
-        input_queue="detections",
-        output_queue="detection_ids",
+        redis_host=REDIS_HOST,
+        redis_port=REDIS_PORT,
+        input_queue=input_queue,
+        output_queue=output_queue,
         sensitivity=0.2,
         memory=5,
     )
@@ -41,21 +72,62 @@ def start_tracking():
     settings_thread.start()
     processor.process_detections()
 
-
-def start_notification():
-    notify.notify_objects(image_queue="image_bytes", detection_queue="detection_ids", camera_id=2)
-
+def start_notification(image_queue, detection_queue, camera_id):
+    """Bildirim gönderme işlemini başlatır."""
+    notify.notify_objects(
+        image_queue=image_queue, detection_queue=detection_queue, camera_id=camera_id
+    )
 
 if __name__ == "__main__":
-    processes = [
-        Process(target=start_frame_producer),
-        Process(target=start_tracking),
-        Process(target=start_notification),
-    ]
+    cameras = get_cameras()
+    if not cameras:
+        print("Hata: Redis'te kamera bilgisi bulunamadı!")
+        exit(1)
 
-    threads = [
-        threading.Thread(target=start_inference, daemon=True),
-    ]
+    processes = []
+    threads = []
+
+    for camera in cameras:
+        processes.append(
+            Process(
+                target=start_frame_producer,
+                args=(camera["queues"]["frames"], camera["url_key"]),
+            )
+        )
+
+        threads.append(
+            threading.Thread(
+                target=start_inference,
+                args=(
+                    camera["queues"]["frames"],
+                    camera["queues"]["detections"],
+                    camera["queues"]["image_bytes"],
+                ),
+                daemon=True,
+            )
+        )
+
+        processes.append(
+            Process(
+                target=start_tracking,
+                args=(
+                    camera["queues"]["detections"],
+                    camera["queues"]["detection_ids"],
+                    camera["id"],
+                ),
+            )
+        )
+
+        processes.append(
+            Process(
+                target=start_notification,
+                args=(
+                    camera["queues"]["image_bytes"],
+                    camera["queues"]["detection_ids"],
+                    camera["id"],
+                ),
+            )
+        )
 
     for process in processes:
         process.start()
