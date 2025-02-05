@@ -13,6 +13,12 @@ class FrameProducer:
         self.video_source = None
         self.timer = ProcessingTimer()
 
+    def __repr__(self):
+        return (f"FrameProducer(output_queue={self.output_queue}, "
+                f"url_key={self.url_key}, "
+                f"redis_client={self.redis_client}, "
+                f"video_source={self.video_source})")
+
     def get_camera_url(self):
         return self.redis_client.get(self.url_key)
 
