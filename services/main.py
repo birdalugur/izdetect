@@ -4,13 +4,10 @@ import frame_producer
 import inference
 import tracking
 import notify
-import redis
+from redis_client import redis_client
 import json
 
-REDIS_HOST = "localhost"
-REDIS_PORT = 6379
 
-redis_client = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
 def get_cameras():
     """Redis'ten kamera URL listesini çeker."""
@@ -18,32 +15,37 @@ def get_cameras():
         camera_urls = redis_client.get("camera_urls")
         if not camera_urls:
             return []
-        
+
         camera_urls = json.loads(camera_urls)
         cameras = []
-        
+
         for idx, url in enumerate(camera_urls):
-            cameras.append({
-                "id": idx + 1,
-                "url_key": url,
-                # "rtsp_url": url,
-                "queues": {
-                    "frames": f"frames_camera_{idx+1}",
-                    "detections": f"detections_camera_{idx+1}",
-                    "image_bytes": f"image_bytes_camera_{idx+1}",
-                    "detection_ids": f"detection_ids_camera_{idx+1}",
-                },
-            })
-        
+            cameras.append(
+                {
+                    "id": idx + 1,
+                    "url_key": url,
+                    "queues": {
+                        "frames": f"frames_camera_{idx+1}",
+                        "detections": f"detections_camera_{idx+1}",
+                        "image_bytes": f"image_bytes_camera_{idx+1}",
+                        "detection_ids": f"detection_ids_camera_{idx+1}",
+                    },
+                }
+            )
+
         return cameras
     except Exception as e:
         print(f"Redis'ten kameraları alırken hata: {e}")
         return []
 
+
 def start_frame_producer(output_queue, rtsp_url):
     """Her kamera için frame üretimini başlatır."""
-    producer = frame_producer.FrameProducer(redis_client=redis_client, output_queue=output_queue, url_key=rtsp_url)
+    producer = frame_producer.FrameProducer(
+        redis_client=redis_client, output_queue=output_queue, url_key=rtsp_url
+    )
     producer.capture_frames(encoding_method="binary")
+
 
 def start_inference(input_queue, output_queue, image_bytes_queue):
     """Inference işlemini başlatır."""
@@ -55,11 +57,11 @@ def start_inference(input_queue, output_queue, image_bytes_queue):
     )
     frame_processor.start()
 
+
 def start_tracking(input_queue, output_queue, camera_id):
     """Tracking işlemini başlatır."""
     processor = tracking.DetectionProcessor(
-        redis_host=REDIS_HOST,
-        redis_port=REDIS_PORT,
+        redis_client=redis_client,
         input_queue=input_queue,
         output_queue=output_queue,
         sensitivity=0.2,
@@ -72,11 +74,13 @@ def start_tracking(input_queue, output_queue, camera_id):
     settings_thread.start()
     processor.process_detections()
 
+
 def start_notification(image_queue, detection_queue, camera_id):
     """Bildirim gönderme işlemini başlatır."""
     notify.notify_objects(
         image_queue=image_queue, detection_queue=detection_queue, camera_id=camera_id
     )
+
 
 if __name__ == "__main__":
     cameras = get_cameras()

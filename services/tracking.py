@@ -3,7 +3,6 @@ import numpy as np
 import time
 from typing import List
 from sort import Sort
-from redis_client import RedisClient
 
 
 def watch_settings(processor):
@@ -55,14 +54,13 @@ class LabelConverter:
 class DetectionProcessor:
     def __init__(
         self,
-        redis_host: str,
-        redis_port: int,
+        redis_client,
         input_queue: str,
         output_queue: str,
         sensitivity: float,
         memory: int,
     ):
-        self.redis_client = RedisClient(host=redis_host, port=redis_port)
+        self.redis_client = (redis_client,)
         self.label_converter = LabelConverter()
         self.input_queue = input_queue
         self.output_queue = output_queue
