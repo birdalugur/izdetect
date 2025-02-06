@@ -62,7 +62,6 @@
             });
 
             if (response.ok) {
-                alert("Kamera başarıyla silindi!");
                 fetchCameras();
             } else {
                 alert("Silme işlemi sırasında hata oluştu!");
@@ -94,34 +93,34 @@
 
     {#if $showAddCamera}
         <div>
-            <h3 class="text-md font-bold">Kamera Ekle</h3>
+            <h3 class="text-sm font-semibold">Kamera Ekle</h3>
             <input
                 type="text"
                 placeholder="IP Adresi"
                 bind:value={camera.ip}
-                class="p-2 border rounded w-full mt-2"
+                class="p-1 border rounded w-full mt-2 text-sm"
             />
             <input
                 type="text"
                 placeholder="Port"
                 bind:value={camera.port}
-                class="p-2 border rounded w-full mt-2"
+                class="p-1 border rounded w-full mt-2 text-sm"
             />
             <input
                 type="text"
                 placeholder="Kullanici Adi"
                 bind:value={camera.username}
-                class="p-2 border rounded w-full mt-2"
+                class="p-1 border rounded w-full mt-2 text-sm"
             />
             <input
                 type="password"
                 placeholder="Şifre"
                 bind:value={camera.password}
-                class="p-2 border rounded w-full mt-2"
+                class="p-1 border rounded w-full mt-2 text-sm"
             />
             <button
                 on:click={addCamera}
-                class="bg-blue-500 text-white p-2 rounded-lg shadow-md w-full mt-3"
+                class="bg-blue-500 text-white p-2 rounded-lg shadow-md w-full mt-3 text-sm"
                 >Ekle ve Kaydet</button
             >
         </div>
