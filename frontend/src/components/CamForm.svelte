@@ -13,24 +13,22 @@
 
     let showAddCamera = writable(true);
 
-    const addCamera = () => {
+    const addCamera = async () => {
         if (camera.ip && camera.port && camera.username && camera.password) {
             cameraList.update((cameras) => [...cameras, { ...camera }]);
             camera = { ip: "", port: "", username: "", password: "" };
-        }
-    };
 
-    const sendCamerasToServer = async () => {
-        const response = await fetch("http://localhost:8000/set-cameras", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify($cameraList),
-        });
+            const response = await fetch("http://localhost:8000/set-cameras", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify($cameraList),
+            });
 
-        if (response.ok) {
-            alert("Kamera bilgileri başarıyla gönderildi!");
-        } else {
-            alert("Hata oluştu!");
+            if (response.ok) {
+                alert("Kamera bilgileri başarıyla eklendi ve kaydedildi!");
+            } else {
+                alert("Hata oluştu!");
+            }
         }
     };
 </script>
@@ -80,12 +78,7 @@
             <button
                 on:click={addCamera}
                 class="bg-blue-500 text-white p-2 rounded-lg shadow-md w-full mt-2"
-                >Ekle</button
-            >
-            <button
-                on:click={sendCamerasToServer}
-                class="bg-green-500 text-white p-2 rounded-lg shadow-md w-full mt-2"
-                >Kaydet ve Güncelle</button
+                >Ekle ve Kaydet</button
             >
         </div>
     {:else}
