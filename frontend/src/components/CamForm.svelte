@@ -45,6 +45,31 @@
         }
     };
 
+    const deleteCamera = async (index) => {
+        const confirmation = confirm(
+            "Bu kamerayı silmek istediğinizden emin misiniz?",
+        );
+        if (confirmation) {
+            cameraList.update((cameras) => {
+                cameras.splice(index, 1);
+                return cameras;
+            });
+
+            const response = await fetch("http://localhost:8000/set-cameras", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(get(cameraList)),
+            });
+
+            if (response.ok) {
+                alert("Kamera başarıyla silindi!");
+                fetchCameras();
+            } else {
+                alert("Silme işlemi sırasında hata oluştu!");
+            }
+        }
+    };
+
     fetchCameras();
 </script>
 
@@ -105,8 +130,21 @@
             <h3 class="text-md font-bold">Kayıtlı Kameralar</h3>
             <ul>
                 {#each $cameraList as cam, index}
-                    <li class="border p-2 my-1 rounded bg-gray-100">
-                        {cam.ip}:{cam.port} - {cam.username}
+                    <li
+                        class="border p-2 my-2 rounded bg-white flex justify-between items-center"
+                    >
+                        <div>
+                            <span class="font-semibold"
+                                >{cam.ip}:{cam.port}</span
+                            >
+                            - {cam.username}
+                        </div>
+                        <button
+                            on:click={() => deleteCamera(index)}
+                            class="text-red-500 hover:text-red-700 p-1 rounded"
+                        >
+                            Sil
+                        </button>
                     </li>
                 {/each}
             </ul>
