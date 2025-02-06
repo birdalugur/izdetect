@@ -1,5 +1,5 @@
 <script>
-    import { writable } from "svelte/store";
+    import { writable, get } from "svelte/store";
 
     // Kamera bilgilerini saklamak için store
     export const cameraList = writable([]);
@@ -13,24 +13,47 @@
 
     let showAddCamera = writable(true);
 
+    const fetchCameras = async () => {
+        try {
+            const response = await fetch("http://localhost:8000/get-cameras");
+            if (response.ok) {
+                const cameras = await response.json();
+                cameraList.set(
+                    cameras.map((cam) => ({
+                        ip: cam.ip,
+                        port: cam.port,
+                        username: cam.username,
+                        password: "****",
+                    })),
+                );
+            }
+        } catch (error) {
+            console.error("Kameralar alinirken hata oluştu:", error);
+        }
+    };
+
     const addCamera = async () => {
         if (camera.ip && camera.port && camera.username && camera.password) {
             cameraList.update((cameras) => [...cameras, { ...camera }]);
-            camera = { ip: "", port: "", username: "", password: "" };
 
             const response = await fetch("http://localhost:8000/set-cameras", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify($cameraList),
+                body: JSON.stringify(get(cameraList)),
             });
 
             if (response.ok) {
-                alert("Kamera bilgileri başarıyla eklendi ve kaydedildi!");
+                alert("Kamera bilgileri başariyla eklendi ve kaydedildi!");
+                fetchCameras();
             } else {
                 alert("Hata oluştu!");
             }
+
+            camera = { ip: "", port: "", username: "", password: "" };
         }
     };
+
+    fetchCameras();
 </script>
 
 <div class="bg-gray-100 p-6 rounded-lg shadow-lg flex flex-col gap-2">
@@ -65,7 +88,7 @@
             />
             <input
                 type="text"
-                placeholder="Kullanıcı Adı"
+                placeholder="Kullanici Adi"
                 bind:value={camera.username}
                 class="p-2 border rounded w-full"
             />
@@ -83,7 +106,7 @@
         </div>
     {:else}
         <div>
-            <h3 class="text-md font-bold">Kayıtlı Kameralar</h3>
+            <h3 class="text-md font-bold">Kayitli Kameralar</h3>
             <ul>
                 {#each $cameraList as cam, index}
                     <li class="border p-2 my-1 rounded bg-gray-100">
