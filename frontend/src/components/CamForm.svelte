@@ -1,16 +1,8 @@
 <script>
     import { writable, get } from "svelte/store";
 
-    // Kamera bilgilerini saklamak için store
     export const cameraList = writable([]);
-
-    let camera = {
-        ip: "",
-        port: "",
-        username: "",
-        password: "",
-    };
-
+    let camera = { ip: "", port: "", username: "", password: "" };
     let showAddCamera = writable(true);
 
     const fetchCameras = async () => {
@@ -43,7 +35,7 @@
             });
 
             if (response.ok) {
-                alert("Kamera bilgileri başariyla eklendi ve kaydedildi!");
+                alert("Kamera bilgileri başarıyla eklendi ve kaydedildi!");
                 fetchCameras();
             } else {
                 alert("Hata oluştu!");
@@ -56,9 +48,12 @@
     fetchCameras();
 </script>
 
-<div class="bg-gray-100 p-6 rounded-lg shadow-lg flex flex-col gap-2">
-    <div class="flex items-center justify-between">
-        <h2 class="text-lg font-bold">Kamera Yönetimi</h2>
+<div class="bg-gray-100 p-6 rounded-lg shadow-lg flex flex-col gap-4">
+    <h2 class="text-lg font-bold text-center">Kamera Yönetimi</h2>
+
+    <!-- Switch Bileşeni -->
+    <div class="flex items-center justify-center gap-4">
+        <span class="text-gray-700 font-medium">Listele</span>
         <label class="relative inline-flex items-center cursor-pointer">
             <input
                 type="checkbox"
@@ -66,9 +61,10 @@
                 class="sr-only peer"
             />
             <div
-                class="w-11 h-6 bg-gray-300 peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-0.5 after:left-1 after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:translate-x-5"
+                class="w-14 h-7 bg-gray-300 peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-7"
             ></div>
         </label>
+        <span class="text-gray-700 font-medium">Ekle</span>
     </div>
 
     {#if $showAddCamera}
@@ -78,35 +74,35 @@
                 type="text"
                 placeholder="IP Adresi"
                 bind:value={camera.ip}
-                class="p-2 border rounded w-full"
+                class="p-2 border rounded w-full mt-2"
             />
             <input
                 type="text"
                 placeholder="Port"
                 bind:value={camera.port}
-                class="p-2 border rounded w-full"
+                class="p-2 border rounded w-full mt-2"
             />
             <input
                 type="text"
                 placeholder="Kullanici Adi"
                 bind:value={camera.username}
-                class="p-2 border rounded w-full"
+                class="p-2 border rounded w-full mt-2"
             />
             <input
                 type="password"
                 placeholder="Şifre"
                 bind:value={camera.password}
-                class="p-2 border rounded w-full"
+                class="p-2 border rounded w-full mt-2"
             />
             <button
                 on:click={addCamera}
-                class="bg-blue-500 text-white p-2 rounded-lg shadow-md w-full mt-2"
+                class="bg-blue-500 text-white p-2 rounded-lg shadow-md w-full mt-3"
                 >Ekle ve Kaydet</button
             >
         </div>
     {:else}
         <div>
-            <h3 class="text-md font-bold">Kayitli Kameralar</h3>
+            <h3 class="text-md font-bold">Kayıtlı Kameralar</h3>
             <ul>
                 {#each $cameraList as cam, index}
                     <li class="border p-2 my-1 rounded bg-gray-100">

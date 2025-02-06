@@ -106,7 +106,6 @@ async def get_image(
     return FileResponse(file_path)
 
 
- 
 @app.post("/start-detection")
 async def start_detection():
     try:
@@ -125,7 +124,6 @@ async def start_detection():
         raise HTTPException(status_code=404, detail="No cameras found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to set camera URLs: {e}")
-
 
 
 @app.post("/stop-detection")
@@ -256,6 +254,16 @@ async def get_camera_urls():
         ]
 
         return camera_urls
+    except FileNotFoundError:
+        return []
+
+
+@app.get("/get-cameras")
+async def get_cameras():
+    try:
+        with open("cameras.json", "r") as f:
+            cameras = json.load(f)
+        return cameras
     except FileNotFoundError:
         return []
 
