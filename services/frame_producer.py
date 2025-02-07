@@ -18,23 +18,21 @@ class FrameProducer:
             f"video_source={self.video_source})"
         )
 
-    def capture_frames(self, encoding_method="binary"):
+    def run(self, encoding_method="binary"):
         cap = cv2.VideoCapture(self.video_source)
         if not cap.isOpened():
             print("Error opening video source.")
             return
-        counter = 0
+
+        not_ret_count = 0
+
         while not self.stop_signal:
-            counter += 1
-            no_frame_count = 0
             ret, frame = cap.read()
-            if counter == 898:
-                print("Video ended.")
             if not ret:
-                no_frame_count += 1
-                print("No frames from camera, retrying {}...".format(no_frame_count))
+                not_ret_count += 1
+                print("No frames from camera, retrying {}...".format(not_ret_count))
                 time.sleep(0.1)
-                if no_frame_count > 5:
+                if not_ret_count > 5:
                     print("Camera disconnected, switching to URL wait mode.")
                     self.stop_signal = True
                     break
@@ -45,6 +43,7 @@ class FrameProducer:
                 frame, encoding_method=encoding_method
             )
             self.redis_client.lpush(self.output_queue, image_bytes)
+            not_ret_count = 0
 
         cap.release()
         print("All frames processed. Waiting for a new camera URL...")
@@ -58,5 +57,5 @@ if __name__ == "__main__":
     processor = FrameProducer(
         output_queue=output_queue, video_source=video_source, redis_client=redis_client
     )
-    processor.capture_frames(encoding_method="binary")
-    # set camera_url rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10
+    processor.run(encoding_method="binary")
+    # rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10

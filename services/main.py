@@ -40,15 +40,13 @@ def get_cameras():
 
 
 def start_frame_producer(output_queue, rtsp_url):
-    """Her kamera için frame üretimini başlatır."""
     producer = frame_producer.FrameProducer(
         redis_client=redis_client, output_queue=output_queue, url_key=rtsp_url
     )
-    producer.capture_frames(encoding_method="binary")
+    producer.run(encoding_method="binary")
 
 
 def start_inference(input_queue, output_queue, image_bytes_queue):
-    """Inference işlemini başlatır."""
     frame_processor = inference.Inference(
         redis_client=redis_client,
         input_queue=input_queue,
@@ -59,7 +57,6 @@ def start_inference(input_queue, output_queue, image_bytes_queue):
 
 
 def start_tracking(input_queue, output_queue, camera_id):
-    """Tracking işlemini başlatır."""
     processor = tracking.DetectionProcessor(
         redis_client=redis_client,
         input_queue=input_queue,
