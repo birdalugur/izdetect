@@ -8,10 +8,10 @@ from image_processor import ImageProcessor
 class Inference:
     def __init__(
         self,
-        redis_client: redis.Redis,
         input_queue: str,
         output_queue: str,
         image_bytes_queue: str,
+        redis_client: redis.Redis,
     ):
         self.redis_client = redis_client
         self.input_queue = input_queue
@@ -36,7 +36,7 @@ class Inference:
         self.redis_client.lpush(self.output_queue, *serialized_results)
         self.redis_client.lpush(self.image_bytes_queue, *image_bytes_list)
 
-    def start(self):
+    def run(self):
         """Main loop to process frames from the Redis queue."""
         while True:
             image_bytes = self.redis_client.rpop(self.input_queue, 5)
@@ -60,9 +60,9 @@ class Inference:
 if __name__ == "__main__":
     redis_client = redis.Redis(host="localhost", port=6379, decode_responses=False)
     inference = Inference(
+        input_queue="camera3",
+        output_queue="inference1",
+        image_bytes_queue="camera1_image_bytes",
         redis_client=redis_client,
-        input_queue="frames_camera1",
-        output_queue="detections",
-        image_bytes_queue="image_bytes",
     )
-    inference.start()
+    inference.run()
