@@ -27,24 +27,30 @@ class LabelConverter:
 
 
 class DetectionProcessor:
-    # Tüm örnekler için ortak memory ve sensitivity
+    # Tüm örnekler için ortak ayarlar
     memory = 5
     sensitivity = 0.2
     min_hits = int(1 + sensitivity * 4)
     iou_threshold = 0.5 - (sensitivity * 0.4)
-    
+
+    # Tüm örneklerin referanslarını saklayan liste
+    instances = []
+
     def __init__(self, redis_client, input_queue: str, output_queue: str):
         self.redis_client = redis_client
         self.label_converter = LabelConverter()
         self.input_queue = input_queue
         self.output_queue = output_queue
 
-        # Tracker, sınıf değişkenlerinden başlatılıyor
+        # Başlangıçta sınıf değişkenlerinden tracker oluştur
         self.tracker = Sort(
-            max_age=DetectionProcessor.memory, 
-            min_hits=DetectionProcessor.min_hits, 
-            iou_threshold=DetectionProcessor.iou_threshold
+            max_age=DetectionProcessor.memory,
+            min_hits=DetectionProcessor.min_hits,
+            iou_threshold=DetectionProcessor.iou_threshold,
         )
+
+        # Örnekleri listeye ekleyerek takip et
+        DetectionProcessor.instances.append(self)
 
     def process_detections(self):
         while True:
@@ -88,7 +94,9 @@ class DetectionProcessor:
         while True:
             try:
                 memory = int(redis_client.get("tracking:memory") or cls.memory)
-                sensitivity = float(redis_client.get("tracking:sensitivity") or cls.sensitivity)
+                sensitivity = float(
+                    redis_client.get("tracking:sensitivity") or cls.sensitivity
+                )
 
                 if memory != cls.memory or sensitivity != cls.sensitivity:
                     cls.memory = memory
@@ -96,7 +104,17 @@ class DetectionProcessor:
                     cls.min_hits = int(1 + sensitivity * 4)
                     cls.iou_threshold = 0.5 - (sensitivity * 0.4)
 
-                    print(f"Global settings updated: memory={memory}, sensitivity={sensitivity}")
+                    # Tüm aktif DetectionProcessor örneklerinin tracker'larını güncelle
+                    for instance in cls.instances:
+                        instance.tracker = Sort(
+                            max_age=cls.memory,
+                            min_hits=cls.min_hits,
+                            iou_threshold=cls.iou_threshold,
+                        )
+
+                    print(
+                        f"Global settings updated: memory={memory}, sensitivity={sensitivity}"
+                    )
             except Exception as e:
                 print(f"Error watching settings: {e}")
 
@@ -107,7 +125,9 @@ if __name__ == "__main__":
     redis_client = redis.Redis(host="localhost", port=6379, decode_responses=False)
 
     # Ayarları izlemek için tek bir thread başlatılır
-    settings_thread = Thread(target=DetectionProcessor.update_settings, args=(redis_client,), daemon=True)
+    settings_thread = Thread(
+        target=DetectionProcessor.update_settings, args=(redis_client,), daemon=True
+    )
     settings_thread.start()
 
     # Birden fazla processor oluşturulabilir, ancak hepsi ortak ayarları kullanır
