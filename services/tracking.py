@@ -2,35 +2,9 @@ import json
 import numpy as np
 import time
 from typing import List
-from sort import Sort
+from threading import Thread
 import redis
-
-
-def watch_settings(processor):
-    while True:
-        try:
-            memory = int(
-                processor.redis_client.get("tracking:memory") or processor.memory
-            )
-            sensitivity = float(
-                processor.redis_client.get("tracking:sensitivity")
-                or processor.sensitivity
-            )
-
-            if memory != processor.memory or sensitivity != processor.sensitivity:
-                processor.memory = memory
-                processor.sensitivity = sensitivity
-                processor.min_hits = int(1 + sensitivity * 4)
-                processor.iou_threshold = 0.5 - (sensitivity * 0.4)
-                processor.tracker = Sort(
-                    max_age=memory,
-                    min_hits=processor.min_hits,
-                    iou_threshold=processor.iou_threshold,
-                )
-                print(f"Settings updated: memory={memory}, sensitivity={sensitivity}")
-        except Exception as e:
-            print(f"Error watching settings: {e}")
-        time.sleep(3)
+from sort import Sort
 
 
 class LabelConverter:
@@ -53,27 +27,31 @@ class LabelConverter:
 
 
 class DetectionProcessor:
-    def __init__(
-        self,
-        redis_client,
-        input_queue: str,
-        output_queue: str,
-        sensitivity: float,
-        memory: int,
-    ):
-        self.redis_client = redis_client
+    memory = 5
+    sensitivity = 0.2
+    min_hits = int(1 + sensitivity * 4)
+    iou_threshold = 0.5 - (sensitivity * 0.4)
+
+    redis_client = None
+    instances = []
+
+    def __init__(self, redis_client, input_queue: str, output_queue: str):
+        if DetectionProcessor.redis_client is None:
+            DetectionProcessor.redis_client = redis_client
+
         self.label_converter = LabelConverter()
         self.input_queue = input_queue
         self.output_queue = output_queue
-        self.sensitivity = sensitivity
-        self.memory = memory
-        self.min_hits = int(1 + sensitivity * 4)
-        self.iou_threshold = 0.5 - (sensitivity * 0.4)
+
         self.tracker = Sort(
-            max_age=memory, min_hits=self.min_hits, iou_threshold=self.iou_threshold
+            max_age=DetectionProcessor.memory,
+            min_hits=DetectionProcessor.min_hits,
+            iou_threshold=DetectionProcessor.iou_threshold,
         )
 
-    def process_detections(self):
+        DetectionProcessor.instances.append(self)
+
+    def run(self):
         while True:
             detection_bytes = self.redis_client.rpop(self.input_queue)
 
@@ -109,20 +87,57 @@ class DetectionProcessor:
             for row in detection_ids.tolist()
         ]
 
+    @classmethod
+    def update_settings(cls):
+        """Tüm örnekler için memory ve sensitivity değerlerini günceller."""
+        while True:
+            print("memory: ", cls.memory)
+            print("sensitivity: ", cls.sensitivity)
+            try:
+                if cls.redis_client is None:
+                    print("Redis client is not initialized!")
+                    time.sleep(3)
+                    continue
+
+                memory = int(cls.redis_client.get("tracking:memory") or cls.memory)
+                sensitivity = float(
+                    cls.redis_client.get("tracking:sensitivity") or cls.sensitivity
+                )
+
+                if memory != cls.memory or sensitivity != cls.sensitivity:
+                    cls.memory = memory
+                    cls.sensitivity = sensitivity
+                    cls.min_hits = int(1 + sensitivity * 4)
+                    cls.iou_threshold = 0.5 - (sensitivity * 0.4)
+
+                    # Tüm aktif DetectionProcessor örneklerinin tracker'larını güncelle
+                    for instance in cls.instances:
+                        instance.tracker = Sort(
+                            max_age=cls.memory,
+                            min_hits=cls.min_hits,
+                            iou_threshold=cls.iou_threshold,
+                        )
+
+                    print(
+                        f"Global settings updated: memory={memory}, sensitivity={sensitivity}"
+                    )
+            except Exception as e:
+                print(f"Error watching settings: {e}")
+
+            time.sleep(3)
+
 
 if __name__ == "__main__":
     redis_client = redis.Redis(host="localhost", port=6379, decode_responses=False)
+
+    # Ayarları izlemek için tek bir thread başlatılır
+    settings_thread = Thread(target=DetectionProcessor.update_settings, daemon=True)
+    settings_thread.start()
 
     processor = DetectionProcessor(
         redis_client=redis_client,
         input_queue="inference1",
         output_queue="tracking1",
-        sensitivity=0.2,
-        memory=5,
     )
 
-    from threading import Thread
-
-    settings_thread = Thread(target=watch_settings, args=(processor,), daemon=True)
-    settings_thread.start()
-    processor.process_detections()
+    processor.run()
