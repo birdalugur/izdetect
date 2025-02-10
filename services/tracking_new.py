@@ -5,6 +5,7 @@ from typing import List
 from sort import Sort
 import redis
 from threading import Thread
+from runer import ParallelRunner
 
 
 class LabelConverter:
@@ -33,26 +34,26 @@ class DetectionProcessor:
     min_hits = int(1 + sensitivity * 4)
     iou_threshold = 0.5 - (sensitivity * 0.4)
 
-    # Tüm örneklerin referanslarını saklayan liste
+    redis_client = None
     instances = []
 
     def __init__(self, redis_client, input_queue: str, output_queue: str):
-        self.redis_client = redis_client
+        if DetectionProcessor.redis_client is None:
+            DetectionProcessor.redis_client = redis_client
+
         self.label_converter = LabelConverter()
         self.input_queue = input_queue
         self.output_queue = output_queue
 
-        # Başlangıçta sınıf değişkenlerinden tracker oluştur
         self.tracker = Sort(
             max_age=DetectionProcessor.memory,
             min_hits=DetectionProcessor.min_hits,
             iou_threshold=DetectionProcessor.iou_threshold,
         )
 
-        # Örnekleri listeye ekleyerek takip et
         DetectionProcessor.instances.append(self)
 
-    def process_detections(self):
+    def run(self):
         while True:
             detection_bytes = self.redis_client.rpop(self.input_queue)
 
@@ -89,13 +90,20 @@ class DetectionProcessor:
         ]
 
     @classmethod
-    def update_settings(cls, redis_client):
+    def update_settings(cls):
         """Tüm örnekler için memory ve sensitivity değerlerini günceller."""
         while True:
+            print("memory: ", cls.memory)
+            print("sensitivity: ", cls.sensitivity)
             try:
-                memory = int(redis_client.get("tracking:memory") or cls.memory)
+                if cls.redis_client is None:
+                    print("Redis client is not initialized!")
+                    time.sleep(3)
+                    continue
+
+                memory = int(cls.redis_client.get("tracking:memory") or cls.memory)
                 sensitivity = float(
-                    redis_client.get("tracking:sensitivity") or cls.sensitivity
+                    cls.redis_client.get("tracking:sensitivity") or cls.sensitivity
                 )
 
                 if memory != cls.memory or sensitivity != cls.sensitivity:
@@ -125,9 +133,7 @@ if __name__ == "__main__":
     redis_client = redis.Redis(host="localhost", port=6379, decode_responses=False)
 
     # Ayarları izlemek için tek bir thread başlatılır
-    settings_thread = Thread(
-        target=DetectionProcessor.update_settings, args=(redis_client,), daemon=True
-    )
+    settings_thread = Thread(target=DetectionProcessor.update_settings, daemon=True)
     settings_thread.start()
 
     # Birden fazla processor oluşturulabilir, ancak hepsi ortak ayarları kullanır
@@ -143,5 +149,20 @@ if __name__ == "__main__":
         output_queue="tracking2",
     )
 
+    processor3 = DetectionProcessor(
+        redis_client=redis_client,
+        input_queue="inference3",
+        output_queue="tracking3",
+    )
+
+    manager = ParallelRunner()
+    manager.add_instance(processor1)
+    manager.add_instance(processor2)
+    manager.add_instance(processor3)
+
+    manager.start_all()
+
     # İşlem başlatılır
-    processor1.process_detections()
+    # processor1.run()
+    # processor2.run()
+    # processor3.run()
