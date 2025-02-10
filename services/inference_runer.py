@@ -21,7 +21,7 @@ class ParallelRunner:
         if hasattr(instance, "run") and callable(instance.run):
             instance.run()
         else:
-            raise AttributeError(f"{instance} sınıfı 'run' metoduna sahip olmalıdır.")
+            raise AttributeError(f"{instance} sinifi 'run' metoduna sahip olmalidir.")
 
     def start_all(self):
         self.threads = {}
@@ -34,7 +34,7 @@ class ParallelRunner:
         for instance, thread in self.threads.items():
             thread.join(
                 timeout=0
-            )  # Thread'leri zorla kapatmak yerine zaman aşımı belirtiyoruz
+            )  # Thread'leri zorla kapatmak yerine zaman aşimi belirtiyoruz
         self.threads.clear()
 
 

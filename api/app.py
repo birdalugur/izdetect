@@ -19,7 +19,8 @@ from db import (
 
 OUTPUT_FOLDER = os.path.abspath("data/")
 CAMERA_URL = "http://10.100.10.94/axis-cgi/mjpg/video.cgi?resolution=1280x800&fps=10"
-RTSP_URL = "rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10"
+# RTSP_URL = "rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10"
+RTSP_URL = "/home/birdal/izdetect/sahil.mp4"
 
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 

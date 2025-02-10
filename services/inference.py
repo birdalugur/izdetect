@@ -60,7 +60,7 @@ class Inference:
 if __name__ == "__main__":
     redis_client = redis.Redis(host="localhost", port=6379, decode_responses=False)
     inference = Inference(
-        input_queue="camera3",
+        input_queue="camera1",
         output_queue="inference1",
         image_bytes_queue="camera1_image_bytes",
         redis_client=redis_client,

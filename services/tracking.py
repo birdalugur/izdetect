@@ -3,16 +3,17 @@ import numpy as np
 import time
 from typing import List
 from sort import Sort
+import redis
 
 
 def watch_settings(processor):
     while True:
         try:
             memory = int(
-                processor.redis_client.client.get("tracking:memory") or processor.memory
+                processor.redis_client.get("tracking:memory") or processor.memory
             )
             sensitivity = float(
-                processor.redis_client.client.get("tracking:sensitivity")
+                processor.redis_client.get("tracking:sensitivity")
                 or processor.sensitivity
             )
 
@@ -60,7 +61,7 @@ class DetectionProcessor:
         sensitivity: float,
         memory: int,
     ):
-        self.redis_client = (redis_client,)
+        self.redis_client = redis_client
         self.label_converter = LabelConverter()
         self.input_queue = input_queue
         self.output_queue = output_queue
@@ -74,10 +75,10 @@ class DetectionProcessor:
 
     def process_detections(self):
         while True:
-            detection_bytes = self.redis_client.pop_from_queue(self.input_queue)
+            detection_bytes = self.redis_client.rpop(self.input_queue)
 
             if detection_bytes:
-                detection = json.loads(detection_bytes[0])
+                detection = json.loads(detection_bytes)
                 dets = np.array(
                     [
                         box + [score]
@@ -91,8 +92,8 @@ class DetectionProcessor:
                 detection_ids = self.tracker.update(dets=dets, labels=converted_labels)
                 detection_ids_list = self.format_detection_ids(detection_ids)
 
-                self.redis_client.push_to_queue(
-                    self.output_queue, [json.dumps(detection_ids_list).encode()]
+                self.redis_client.lpush(
+                    self.output_queue, *[json.dumps(detection_ids_list).encode()]
                 )
             else:
                 print("Queue is empty, waiting...")
@@ -110,11 +111,12 @@ class DetectionProcessor:
 
 
 if __name__ == "__main__":
+    redis_client = redis.Redis(host="localhost", port=6379, decode_responses=False)
+
     processor = DetectionProcessor(
-        redis_host="localhost",
-        redis_port=6379,
-        input_queue="detections",
-        output_queue="detection_ids",
+        redis_client=redis_client,
+        input_queue="inference1",
+        output_queue="tracking1",
         sensitivity=0.2,
         memory=5,
     )

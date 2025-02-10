@@ -21,7 +21,7 @@
         <!-- <Messages {messages} /> -->
         <!-- <Timeline /> -->
     </div>
-    <div class="w-2/5 p-2 bg-gray-50">
+    <div class="w-2/5 p-2 bg-white">
         <LiveCamera />
     </div>
     <div class="w-2/5 p-5 bg-gray-50 overflow-y-auto flex flex-col gap-2.5">

@@ -15,25 +15,27 @@
     };
 </script>
 
-<!-- svelte-ignore a11y-click-events-have-key-events -->
-<div class="camera-container" class:isFullscreen>
-    <h4>Cam - 2</h4>
-    <img
-        class="camera-view"
-        src={`${videoStreamUrl}`}
-        alt="IP Kamera Canlı Yayını"
-        on:click={toggleFullscreen}
-    />
-    {#if isFullscreen}
-        <div class="fullscreen-overlay" on:click={toggleFullscreen}>
-            <img
-                class="fullscreen-video"
-                src={`${videoStreamUrl}`}
-                alt="IP Kamera Tam Ekran"
-            />
-            <button class="close-btn" on:click={toggleFullscreen}>✕</button>
-        </div>
-    {/if}
+<div class="bg-gray-100 p-2 rounded-lg shadow-lg  mx-auto mt-2">
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <div class="camera-container" class:isFullscreen>
+        <h4>Cam - 2</h4>
+        <img
+            class="camera-view"
+            src={`${videoStreamUrl}`}
+            alt="IP Kamera Canlı Yayını"
+            on:click={toggleFullscreen}
+        />
+        {#if isFullscreen}
+            <div class="fullscreen-overlay" on:click={toggleFullscreen}>
+                <img
+                    class="fullscreen-video"
+                    src={`${videoStreamUrl}`}
+                    alt="IP Kamera Tam Ekran"
+                />
+                <button class="close-btn" on:click={toggleFullscreen}>✕</button>
+            </div>
+        {/if}
+    </div>
 </div>
 
 <style>
