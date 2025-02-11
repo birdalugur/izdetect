@@ -2,13 +2,16 @@ import cv2
 import redis
 import time
 from image_processor import ImageProcessor
+from base import BaseClass
 
 
-class FrameProducer:
-    def __init__(self, video_source: str, output_queue: str, redis_client: redis.Redis):
+class FrameProducer(BaseClass):
+    def __init__(
+        self, video_source: str, output_queue: str, redis_client: redis.Redis = None
+    ):
         self.video_source = video_source
         self.output_queue = output_queue
-        self.redis_client = redis_client
+        super().__init__(redis_client)
         self.stop_signal = False
 
     def __repr__(self):
@@ -54,8 +57,6 @@ if __name__ == "__main__":
     output_queue = "frames_camera1"
     redis_client = redis.Redis(host="localhost", port=6379, decode_responses=True)
 
-    processor = FrameProducer(
-        output_queue=output_queue, video_source=video_source, redis_client=redis_client
-    )
+    processor = FrameProducer(output_queue=output_queue, video_source=video_source)
     processor.run(encoding_method="binary")
     # rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10

@@ -5,6 +5,7 @@ from typing import List
 from threading import Thread
 import redis
 from sort import Sort
+from base import BaseClass
 
 
 class LabelConverter:
@@ -26,19 +27,18 @@ class LabelConverter:
         return [self.converted_label_map.get(label, label) for label in labels]
 
 
-class DetectionProcessor:
+class DetectionProcessor(BaseClass):
     memory = 5
     sensitivity = 0.2
     min_hits = int(1 + sensitivity * 4)
     iou_threshold = 0.5 - (sensitivity * 0.4)
 
-    redis_client = None
     instances = []
+    settings_thread_started = False
 
-    def __init__(self, redis_client, input_queue: str, output_queue: str):
-        if DetectionProcessor.redis_client is None:
-            DetectionProcessor.redis_client = redis_client
-
+    def __init__(self, input_queue: str, output_queue: str, redis_client=None):
+        super().__init__()
+        self.redis_client = redis_client or self.redis_client
         self.label_converter = LabelConverter()
         self.input_queue = input_queue
         self.output_queue = output_queue
@@ -50,6 +50,13 @@ class DetectionProcessor:
         )
 
         DetectionProcessor.instances.append(self)
+
+        if not DetectionProcessor.settings_thread_started:
+            DetectionProcessor.settings_thread_started = True
+            settings_thread = Thread(
+                target=DetectionProcessor.update_settings, daemon=True
+            )
+            settings_thread.start()
 
     def run(self):
         while True:
@@ -128,16 +135,8 @@ class DetectionProcessor:
 
 
 if __name__ == "__main__":
-    redis_client = redis.Redis(host="localhost", port=6379, decode_responses=False)
-
-    # Ayarları izlemek için tek bir thread başlatılır
-    settings_thread = Thread(target=DetectionProcessor.update_settings, daemon=True)
-    settings_thread.start()
-
     processor = DetectionProcessor(
-        redis_client=redis_client,
         input_queue="inference1",
         output_queue="tracking1",
     )
-
     processor.run()

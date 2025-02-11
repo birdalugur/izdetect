@@ -3,17 +3,18 @@ import model
 from typing import List
 import redis
 from image_processor import ImageProcessor
+from base import BaseClass
 
 
-class Inference:
+class Inference(BaseClass):
     def __init__(
         self,
         input_queue: str,
         output_queue: str,
         image_bytes_queue: str,
-        redis_client: redis.Redis,
+        redis_client: redis.Redis = None,
     ):
-        self.redis_client = redis_client
+        super().__init__(redis_client)
         self.input_queue = input_queue
         self.output_queue = output_queue
         self.image_bytes_queue = image_bytes_queue
@@ -62,7 +63,6 @@ if __name__ == "__main__":
     inference = Inference(
         input_queue="camera1",
         output_queue="inference1",
-        image_bytes_queue="camera1_image_bytes",
-        redis_client=redis_client,
+        image_bytes_queue="camera1_image_bytes"
     )
     inference.run()
