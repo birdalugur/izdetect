@@ -45,19 +45,19 @@ if __name__ == "__main__":
     task1 = Inference(
         input_queue="camera1",
         output_queue="inference1",
-        image_bytes_queue="camera1_image_bytes",
+        image_bytes_queue="camera1_inf",
         redis_client=redis_client,
     )
     task2 = Inference(
         input_queue="camera2",
         output_queue="inference2",
-        image_bytes_queue="camera2_image_bytes",
+        image_bytes_queue="camera2_inf",
         redis_client=redis_client,
     )
     task3 = Inference(
         input_queue="camera3",
         output_queue="inference3",
-        image_bytes_queue="camera3_image_bytes",
+        image_bytes_queue="camera3_inf",
         redis_client=redis_client,
     )
 

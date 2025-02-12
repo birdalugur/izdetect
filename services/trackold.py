@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import time
 from typing import List
@@ -58,18 +59,27 @@ class DetectionProcessor(BaseClass):
             settings_thread.start()
 
     def run(self):
-        import os
-
         while True:
             detection_bytes = self.redis_client.rpop(self.input_queue)
 
             if detection_bytes:
-                self.redis_client.lpush(self.output_queue, detection_bytes)
-                print("Process ID: ", os.getpid())
-                print(DetectionProcessor.memory)
-                print(DetectionProcessor.sensitivity)
-                time.sleep(1)
+                detection = json.loads(detection_bytes)
+                dets = np.array(
+                    [
+                        box + [score]
+                        for box, score in zip(detection["boxes"], detection["scores"])
+                    ]
+                )
 
+                converted_labels = self.label_converter.convert_labels(
+                    detection["labels"]
+                )
+                detection_ids = self.tracker.update(dets=dets, labels=converted_labels)
+                detection_ids_list = self.format_detection_ids(detection_ids)
+
+                self.redis_client.lpush(
+                    self.output_queue, *[json.dumps(detection_ids_list).encode()]
+                )
             else:
                 print("Queue is empty, waiting...")
                 time.sleep(2)
@@ -88,7 +98,8 @@ class DetectionProcessor(BaseClass):
     def update_settings(cls):
         """Tüm örnekler için memory ve sensitivity değerlerini günceller."""
         while True:
-
+            print("memory: ", cls.memory)
+            print("sensitivity: ", cls.sensitivity)
             try:
                 if cls.redis_client is None:
                     print("Redis client is not initialized!")
@@ -101,7 +112,6 @@ class DetectionProcessor(BaseClass):
                 )
 
                 if memory != cls.memory or sensitivity != cls.sensitivity:
-                    print("cls güncellendi")
                     cls.memory = memory
                     cls.sensitivity = sensitivity
                     cls.min_hits = int(1 + sensitivity * 4)
@@ -125,30 +135,8 @@ class DetectionProcessor(BaseClass):
 
 
 if __name__ == "__main__":
-    redis_client = redis.Redis(host="localhost", port=6379, decode_responses=False)
-
-    # Ayarları izlemek için tek bir thread başlatılır
-    settings_thread = Thread(target=DetectionProcessor.update_settings, daemon=True)
-    settings_thread.start()
-
-    processor1 = DetectionProcessor(
-        redis_client=redis_client,
-        input_queue="camera1_image_bytes",
-        output_queue="camera1_image_bytes",
+    processor = DetectionProcessor(
+        input_queue="inference1",
+        output_queue="tracking1",
     )
-
-    processor2 = DetectionProcessor(
-        redis_client=redis_client,
-        input_queue="tracking2",
-        output_queue="tracking2",
-    )
-
-    # processor1.run()
-    from runer import ParallelRunner
-
-    manager = ParallelRunner()
-
-    manager.add_instance(processor1)
-    manager.add_instance(processor2)
-
-    manager.start_all()
+    processor.run()

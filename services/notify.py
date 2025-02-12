@@ -84,9 +84,9 @@ if __name__ == "__main__":
     
     manager = ParallelRunner()
     
-    task1 = NotifyProcessor(image_queue="camera1_image_bytes", detection_queue="tracking1", camera_id=1, redis_client=redis_client)
-    task2 = NotifyProcessor(image_queue="camera2_image_bytes", detection_queue="tracking2", camera_id=2, redis_client=redis_client)
-    task3 = NotifyProcessor(image_queue="camera3_image_bytes", detection_queue="tracking3", camera_id=3, redis_client=redis_client)
+    task1 = NotifyProcessor(image_queue="camera1_inf", detection_queue="tracking1", camera_id=1, redis_client=redis_client)
+    task2 = NotifyProcessor(image_queue="camera2_inf", detection_queue="tracking2", camera_id=2, redis_client=redis_client)
+    task3 = NotifyProcessor(image_queue="camera3_inf", detection_queue="tracking3", camera_id=3, redis_client=redis_client)
     
     manager.add_instance(task1)
     manager.add_instance(task2)
