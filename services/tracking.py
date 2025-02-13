@@ -3,7 +3,6 @@ import numpy as np
 import time
 from typing import List
 from threading import Thread
-import redis
 from sort import Sort
 from base import BaseClass
 
@@ -28,14 +27,6 @@ class LabelConverter:
 
 
 class DetectionProcessor(BaseClass):
-    memory = 5
-    sensitivity = 0.2
-    min_hits = int(1 + sensitivity * 4)
-    iou_threshold = 0.5 - (sensitivity * 0.4)
-
-    instances = []
-    settings_thread_started = False
-
     def __init__(self, input_queue: str, output_queue: str, redis_client=None):
         super().__init__()
         self.redis_client = redis_client or self.redis_client
@@ -43,26 +34,26 @@ class DetectionProcessor(BaseClass):
         self.input_queue = input_queue
         self.output_queue = output_queue
 
+        self.memory = int(self.redis_client.get("tracking:memory") or 5)
+        self.sensitivity = float(self.redis_client.get("tracking:sensitivity") or 0.2)
+        self.min_hits = int(1 + self.sensitivity * 4)
+        self.iou_threshold = 0.5 - (self.sensitivity * 0.4)
+
         self.tracker = Sort(
-            max_age=DetectionProcessor.memory,
-            min_hits=DetectionProcessor.min_hits,
-            iou_threshold=DetectionProcessor.iou_threshold,
+            max_age=self.memory,
+            min_hits=self.min_hits,
+            iou_threshold=self.iou_threshold,
         )
 
-        DetectionProcessor.instances.append(self)
-
-        if not DetectionProcessor.settings_thread_started:
-            DetectionProcessor.settings_thread_started = True
-            settings_thread = Thread(
-                target=DetectionProcessor.update_settings, daemon=True
-            )
-            settings_thread.start()
-
     def run(self):
+        self.settings_thread = Thread(target=self.update_settings, daemon=True)
+        self.settings_thread.start()
         while True:
             detection_bytes = self.redis_client.rpop(self.input_queue)
 
             if detection_bytes:
+                print("memory: ", self.memory)
+                print("sensitivity: ", self.sensitivity)
                 detection = json.loads(detection_bytes)
                 dets = np.array(
                     [
@@ -94,36 +85,26 @@ class DetectionProcessor(BaseClass):
             for row in detection_ids.tolist()
         ]
 
-    @classmethod
-    def update_settings(cls):
-        """Tüm örnekler için memory ve sensitivity değerlerini günceller."""
+    def update_settings(self):
         while True:
-            print("memory: ", cls.memory)
-            print("sensitivity: ", cls.sensitivity)
             try:
-                if cls.redis_client is None:
-                    print("Redis client is not initialized!")
-                    time.sleep(3)
-                    continue
-
-                memory = int(cls.redis_client.get("tracking:memory") or cls.memory)
+                memory = int(self.redis_client.get("tracking:memory") or self.memory)
                 sensitivity = float(
-                    cls.redis_client.get("tracking:sensitivity") or cls.sensitivity
+                    self.redis_client.get("tracking:sensitivity") or self.sensitivity
                 )
 
-                if memory != cls.memory or sensitivity != cls.sensitivity:
-                    cls.memory = memory
-                    cls.sensitivity = sensitivity
-                    cls.min_hits = int(1 + sensitivity * 4)
-                    cls.iou_threshold = 0.5 - (sensitivity * 0.4)
+                if memory != self.memory or sensitivity != self.sensitivity:
+                    self.memory = memory
+                    self.sensitivity = sensitivity
+                    self.min_hits = int(1 + sensitivity * 4)
+                    self.iou_threshold = 0.5 - (sensitivity * 0.4)
 
-                    # Tüm aktif DetectionProcessor örneklerinin tracker'larını güncelle
-                    for instance in cls.instances:
-                        instance.tracker = Sort(
-                            max_age=cls.memory,
-                            min_hits=cls.min_hits,
-                            iou_threshold=cls.iou_threshold,
-                        )
+                    # Tracker'ı güncelle
+                    self.tracker = Sort(
+                        max_age=self.memory,
+                        min_hits=self.min_hits,
+                        iou_threshold=self.iou_threshold,
+                    )
 
                     print(
                         f"Global settings updated: memory={memory}, sensitivity={sensitivity}"
@@ -135,8 +116,18 @@ class DetectionProcessor(BaseClass):
 
 
 if __name__ == "__main__":
-    processor = DetectionProcessor(
-        input_queue="inference1",
-        output_queue="tracking1",
-    )
-    processor.run()
+    from runer import ParallelRunner
+
+    processor1 = DetectionProcessor(input_queue="inference1", output_queue="tracking1")
+
+    processor2 = DetectionProcessor(input_queue="inference2", output_queue="tracking2")
+
+    manager = ParallelRunner()
+
+    manager.add_instance(processor1)
+    manager.add_instance(processor2)
+
+    manager.start_all()
+    time.sleep(60)
+    manager.stop_all()
+    print("Tracking işlemleri durduruldu.")

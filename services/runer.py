@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     redis_client = redis.Redis(host="localhost", port=6379, decode_responses=True)
     task1 = FrameProducer(
-        video_source="/home/birdal/izdetect/sahil.mp4",
+        video_source="rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10",
         output_queue="camera1",
         redis_client=redis_client,
     )
@@ -61,9 +61,9 @@ if __name__ == "__main__":
 
     manager.add_instance(task1)
     manager.add_instance(task2)
-    manager.add_instance(task3)
+    # manager.add_instance(task3)
 
     manager.start_all()
-    time.sleep(10)
+    time.sleep(60)
     manager.stop_all()
     print("Tüm işlemler durduruldu.")

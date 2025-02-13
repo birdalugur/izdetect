@@ -54,16 +54,9 @@ if __name__ == "__main__":
         image_bytes_queue="camera2_inf",
         redis_client=redis_client,
     )
-    task3 = Inference(
-        input_queue="camera3",
-        output_queue="inference3",
-        image_bytes_queue="camera3_inf",
-        redis_client=redis_client,
-    )
 
     manager.add_instance(task1)
     manager.add_instance(task2)
-    manager.add_instance(task3)
 
     manager.start_all()
     time.sleep(10)
