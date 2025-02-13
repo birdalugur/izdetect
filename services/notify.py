@@ -5,18 +5,19 @@ import cv2
 from datetime import datetime
 from collections import Counter
 from utils import draw_detection_with_det, decode_img
-from db import add_notification, Record
+from db import Record
 from redis_client import publish_to_redis
 from runer import ParallelRunner
+from base import BaseClass
 
 
-class NotifyProcessor:
+class NotifyProcessor(BaseClass):
     def __init__(
         self,
         image_queue: str,
         detection_queue: str,
         camera_id: int,
-        redis_client: redis.Redis,
+        redis_client: redis.Redis=None,
     ):
         self.image_queue = image_queue
         self.detection_queue = detection_queue
@@ -80,17 +81,13 @@ class NotifyProcessor:
                 count += 1
 
 if __name__ == "__main__":
-    redis_client = redis.Redis(host="localhost", port=6379, decode_responses=False)
-    
     manager = ParallelRunner()
     
-    task1 = NotifyProcessor(image_queue="camera1_inf", detection_queue="tracking1", camera_id=1, redis_client=redis_client)
-    task2 = NotifyProcessor(image_queue="camera2_inf", detection_queue="tracking2", camera_id=2, redis_client=redis_client)
-    task3 = NotifyProcessor(image_queue="camera3_inf", detection_queue="tracking3", camera_id=3, redis_client=redis_client)
+    task1 = NotifyProcessor(image_queue="camera1_inf", detection_queue="tracking1", camera_id=1)
+    task2 = NotifyProcessor(image_queue="camera2_inf", detection_queue="tracking2", camera_id=2)
     
     manager.add_instance(task1)
     manager.add_instance(task2)
-    manager.add_instance(task3)
     
     manager.start_all()
  
