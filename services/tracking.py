@@ -116,18 +116,7 @@ class DetectionProcessor(BaseClass):
 
 
 if __name__ == "__main__":
-    from runer import ParallelRunner
+    # from runer import ParallelRunner
 
     processor1 = DetectionProcessor(input_queue="inference1", output_queue="tracking1")
-
-    processor2 = DetectionProcessor(input_queue="inference2", output_queue="tracking2")
-
-    manager = ParallelRunner()
-
-    manager.add_instance(processor1)
-    manager.add_instance(processor2)
-
-    manager.start_all()
-    time.sleep(60)
-    manager.stop_all()
-    print("Tracking işlemleri durduruldu.")
+    processor1.run()

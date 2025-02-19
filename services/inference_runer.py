@@ -5,7 +5,7 @@ from inference import Inference
 import redis
 
 
-class ParallelRunner:
+class ThreadRunner:
     def __init__(self):
         self.instances = []
         self.threads = {}
@@ -39,7 +39,7 @@ class ParallelRunner:
 
 
 if __name__ == "__main__":
-    manager = ParallelRunner()
+    manager = ThreadRunner()
 
     redis_client = redis.Redis(host="localhost", port=6379, decode_responses=False)
     task1 = Inference(
