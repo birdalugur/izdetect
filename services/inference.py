@@ -12,12 +12,14 @@ class Inference(BaseClass):
         input_queue: str,
         output_queue: str,
         image_bytes_queue: str,
+        batch_size: int = 5,
         redis_client: redis.Redis = None,
     ):
         super().__init__(redis_client)
         self.input_queue = input_queue
         self.output_queue = output_queue
         self.image_bytes_queue = image_bytes_queue
+        self.batch_size = batch_size
         self.idle_count = 0
 
     def process_single_frame(self, image_bytes: bytes):
@@ -40,7 +42,7 @@ class Inference(BaseClass):
     def run(self):
         """Main loop to process frames from the Redis queue."""
         while True:
-            image_bytes = self.redis_client.rpop(self.input_queue, 5)
+            image_bytes = self.redis_client.rpop(self.input_queue, self.batch_size)
 
             if image_bytes:
                 self.idle_count = 0
@@ -59,10 +61,10 @@ class Inference(BaseClass):
 
 
 if __name__ == "__main__":
-    redis_client = redis.Redis(host="localhost", port=6379, decode_responses=False)
     inference = Inference(
         input_queue="camera1",
         output_queue="inference1",
-        image_bytes_queue="camera1_image_bytes"
+        image_bytes_queue="camera1_inf",
+        batch_size=10,
     )
     inference.run()
