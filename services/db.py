@@ -5,10 +5,12 @@ from datetime import datetime
 from typing import List
 
 
-client = MongoClient("mongodb://localhost:27017/")
-db = client["object_detection"]
-notifications_collection = db["notifications"]
 selected_label_map = {1: "insan", 2: "arac", 3: "hayvan"}
+
+
+def get_db():
+    client = MongoClient("mongodb://localhost:27017/")
+    return client["object_detection"], client
 
 
 class Record(BaseModel):
@@ -25,9 +27,12 @@ class Record(BaseModel):
 
 
 def add_notification(record: Record) -> str:
+    db, client = get_db()
+    notifications_collection = db["notifications"]
+
     insert_data = record.model_dump(by_alias=True, exclude={"id"})
     _ = notifications_collection.insert_one(insert_data)
-
+    client.close()
     return insert_data
 
 
