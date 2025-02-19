@@ -5,9 +5,8 @@ import cv2
 from datetime import datetime
 from collections import Counter
 from utils import draw_detection_with_det, decode_img
-from db import Record
+from db import Record, add_notification
 from redis_client import publish_to_redis
-from runer import ParallelRunner
 from base import BaseClass
 
 
@@ -22,7 +21,7 @@ class NotifyProcessor(BaseClass):
         self.image_queue = image_queue
         self.detection_queue = detection_queue
         self.camera_id = camera_id
-        self.redis_client = redis_client
+        super().__init__(redis_client)
         self.notified_object_ids = set()
         self.selected_label = {1, 2, 3, 4, 6, 8, 18, 19, 20, 21}
 
@@ -80,16 +79,7 @@ class NotifyProcessor(BaseClass):
                     publish_to_redis(inserted_data)
                 count += 1
 
-if __name__ == "__main__":
-    manager = ParallelRunner()
-    
+if __name__ == "__main__":    
     task1 = NotifyProcessor(image_queue="camera1_inf", detection_queue="tracking1", camera_id=1)
-    task2 = NotifyProcessor(image_queue="camera2_inf", detection_queue="tracking2", camera_id=2)
+    task1.run()
     
-    manager.add_instance(task1)
-    manager.add_instance(task2)
-    
-    manager.start_all()
- 
-    # manager.stop_all()
-    print("Tüm işlemler durduruldu.")
