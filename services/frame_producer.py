@@ -53,10 +53,9 @@ class FrameProducer(BaseClass):
 
 
 if __name__ == "__main__":
-    video_source = "/home/birdal/izdetect/sahil.mp4"
-    output_queue = "frames_camera1"
-    redis_client = redis.Redis(host="localhost", port=6379, decode_responses=True)
-
-    processor = FrameProducer(output_queue=output_queue, video_source=video_source)
+    processor = FrameProducer(
+        output_queue="camera1", video_source="/home/birdal/izdetect/sahil.mp4"
+    )
     processor.run(encoding_method="binary")
+
     # rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10
