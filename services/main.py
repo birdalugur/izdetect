@@ -1,12 +1,11 @@
-from multiprocessing import Process
-import threading
-import frame_producer
-import inference
-import tracking
-import notify
+from runer import ParallelRunner
+from frame_producer import FrameProducer
+from inference import Inference
+from tracking import DetectionProcessor
+from notify import NotifyProcessor
+from inference_runer import ThreadRunner
 from redis_client import redis_client
 import json
-
 
 
 def get_cameras():
@@ -39,105 +38,51 @@ def get_cameras():
         return []
 
 
-def start_frame_producer(output_queue, rtsp_url):
-    producer = frame_producer.FrameProducer(
-        redis_client=redis_client, output_queue=output_queue, url_key=rtsp_url
-    )
-    producer.run(encoding_method="binary")
-
-
-def start_inference(input_queue, output_queue, image_bytes_queue):
-    frame_processor = inference.Inference(
-        redis_client=redis_client,
-        input_queue=input_queue,
-        output_queue=output_queue,
-        image_bytes_queue=image_bytes_queue,
-    )
-    frame_processor.start()
-
-
-def start_tracking(input_queue, output_queue, camera_id):
-    processor = tracking.DetectionProcessor(
-        redis_client=redis_client,
-        input_queue=input_queue,
-        output_queue=output_queue,
-        sensitivity=0.2,
-        memory=5,
-    )
-
-    settings_thread = threading.Thread(
-        target=tracking.watch_settings, args=(processor,), daemon=True
-    )
-    settings_thread.start()
-    processor.process_detections()
-
-
-def start_notification(image_queue, detection_queue, camera_id):
-    """Bildirim gönderme işlemini başlatır."""
-    notify.notify_objects(
-        image_queue=image_queue, detection_queue=detection_queue, camera_id=camera_id
-    )
-
-
 if __name__ == "__main__":
-    cameras = get_cameras()
-    if not cameras:
-        print("Hata: Redis'te kamera bilgisi bulunamadı!")
-        exit(1)
+    manager1 = ParallelRunner()
+    # manager2 = ParallelRunner()
+    # manager3 = ParallelRunner()
+    thread_runer = ThreadRunner()
 
-    processes = []
-    threads = []
+    task1 = FrameProducer(
+        video_source="rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10",
+        output_queue="camera1",
+    )
+    task2 = FrameProducer(
+        video_source="rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10",
+        output_queue="camera2",
+    )
 
-    for camera in cameras:
-        processes.append(
-            Process(
-                target=start_frame_producer,
-                args=(camera["queues"]["frames"], camera["url_key"]),
-            )
-        )
+    task3 = Inference(
+        input_queue="camera1",
+        output_queue="inference1",
+        image_bytes_queue="camera1_inf",
+    )
+    task4 = Inference(
+        input_queue="camera2",
+        output_queue="inference2",
+        image_bytes_queue="camera2_inf",
+    )
 
-        threads.append(
-            threading.Thread(
-                target=start_inference,
-                args=(
-                    camera["queues"]["frames"],
-                    camera["queues"]["detections"],
-                    camera["queues"]["image_bytes"],
-                ),
-                daemon=True,
-            )
-        )
+    task5 = DetectionProcessor(input_queue="inference1", output_queue="tracking1")
+    task6 = DetectionProcessor(input_queue="inference2", output_queue="tracking2")
 
-        processes.append(
-            Process(
-                target=start_tracking,
-                args=(
-                    camera["queues"]["detections"],
-                    camera["queues"]["detection_ids"],
-                    camera["id"],
-                ),
-            )
-        )
+    task7 = NotifyProcessor(
+        image_queue="camera1_inf", detection_queue="tracking1", camera_id=1
+    )
+    task8 = NotifyProcessor(
+        image_queue="camera2_inf", detection_queue="tracking2", camera_id=2
+    )
 
-        processes.append(
-            Process(
-                target=start_notification,
-                args=(
-                    camera["queues"]["image_bytes"],
-                    camera["queues"]["detection_ids"],
-                    camera["id"],
-                ),
-            )
-        )
+    manager1.add_instance(task1)
+    manager1.add_instance(task2)
+    manager1.add_instance(task5)
+    manager1.add_instance(task6)
+    manager1.add_instance(task7)
+    manager1.add_instance(task8)
 
-    for process in processes:
-        process.start()
+    thread_runer.add_instance(task3)
+    thread_runer.add_instance(task4)
 
-    for thread in threads:
-        thread.start()
-
-    for process in processes:
-        process.join()
-
-    for thread in threads:
-        thread.join()
+    manager1.start_all()
+    thread_runer.start_all()
