@@ -1,9 +1,8 @@
-from runer import ParallelRunner
+from runer import Runner
 from frame_producer import FrameProducer
 from inference import Inference
 from tracking import DetectionProcessor
 from notify import NotifyProcessor
-from inference_runer import ThreadRunner
 from redis_client import redis_client
 import json
 
@@ -39,10 +38,8 @@ def get_cameras():
 
 
 if __name__ == "__main__":
-    manager1 = ParallelRunner()
-    # manager2 = ParallelRunner()
-    # manager3 = ParallelRunner()
-    thread_runer = ThreadRunner()
+    manager1 = Runner(mode='process')
+    thread_runer = Runner(mode='thread')
 
     task1 = FrameProducer(
         video_source="rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10",
