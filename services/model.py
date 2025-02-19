@@ -1,6 +1,6 @@
 import torch
 from transformers import DetrImageProcessorFast, DetrForObjectDetection
-from processing_timer import ProcessingTimer
+from utils import ProcessingTimer
 import time
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
