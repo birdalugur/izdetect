@@ -11,6 +11,7 @@ class FrameProducer(BaseClass):
     ):
         self.video_source = video_source
         self.output_queue = output_queue
+        self.is_connected = False  # Kamera bağlantı durumu
         super().__init__(redis_client)
         self.stop_signal = False
 
@@ -22,13 +23,27 @@ class FrameProducer(BaseClass):
         )
 
     def run(self, encoding_method="binary"):
-        cap = cv2.VideoCapture(self.video_source)
-        if not cap.isOpened():
-            print("Error opening video source.")
+        retry_count = 0
+        max_retries = 5
+
+        while retry_count < max_retries:
+            cap = cv2.VideoCapture(self.video_source)
+            if not cap.isOpened():
+                print(f"Error opening video source {self.video_source}. Retrying...")
+                retry_count += 1
+                time.sleep(2)
+                continue
+            else:
+                self.is_connected = True
+                break
+
+        if not self.is_connected:
+            print(
+                f"Failed to connect to {self.video_source} after {max_retries} retries."
+            )
             return
 
         not_ret_count = 0
-
         while not self.stop_signal:
             ret, frame = cap.read()
             if not ret:
@@ -57,5 +72,3 @@ if __name__ == "__main__":
         output_queue="camera1", video_source="/home/birdal/izdetect/sahil.mp4"
     )
     processor.run(encoding_method="binary")
-
-    # rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10

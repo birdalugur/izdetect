@@ -11,6 +11,8 @@ if __name__ == "__main__":
     camera_urls = [
         "rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10",
         "rtsp://deneme:155115@10.100.10.95:554/axis-media/media.amp?adjustablelivestream=1&fps=10",
+        # "/home/birdal/izdetect/sahil.mp4",
+        # "/home/birdal/izdetect/sahil.mp4"
     ]
 
     for idx, url in enumerate(camera_urls, start=1):
