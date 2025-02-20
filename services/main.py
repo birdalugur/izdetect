@@ -1,3 +1,4 @@
+import time
 from runer import Runner
 from frame_producer import FrameProducer
 from inference import Inference
@@ -11,7 +12,7 @@ if __name__ == "__main__":
     camera_urls = [
         "rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10",
         "rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10",
-        "/home/birdal/izdetect/sahil.mp4",
+        # "/home/birdal/izdetect/sahil.mp4",
         # "/home/birdal/izdetect/sahil.mp4"
     ]
 
@@ -41,3 +42,7 @@ if __name__ == "__main__":
 
     manager.start_all()
     thread_runer.start_all()
+
+    time.sleep(12)
+    manager.stop_all()
+    thread_runer.stop_all()

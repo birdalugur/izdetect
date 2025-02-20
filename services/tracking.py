@@ -52,8 +52,6 @@ class DetectionProcessor(BaseClass):
             detection_bytes = self.redis_client.rpop(self.input_queue)
 
             if detection_bytes:
-                print("memory: ", self.memory)
-                print("sensitivity: ", self.sensitivity)
                 detection = json.loads(detection_bytes)
                 dets = np.array(
                     [

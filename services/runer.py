@@ -7,7 +7,6 @@ class Runner:
     def __init__(self, mode="process"):
         if mode not in ("process", "thread"):
             raise ValueError("Mode must be either 'process' or 'thread'")
-
         self.mode = mode
         self.instances = []
         self.tasks = {}
@@ -34,19 +33,20 @@ class Runner:
                 )
             else:
                 task = threading.Thread(target=self._run_instance, args=(instance,))
-
             task.start()
             self.tasks[instance] = task
 
     def stop_all(self):
+        for instance in self.instances:
+            if hasattr(instance, "stop"):
+                instance.stop()
+
         for instance, task in self.tasks.items():
             if self.mode == "process":
                 if task.is_alive():
                     task.terminate()
             else:
-                task.join(
-                    timeout=0
-                )  # We specify a timeout to avoid forcing threads to close
+                task.join(timeout=1)
         self.tasks.clear()
 
 

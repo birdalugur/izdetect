@@ -3,7 +3,7 @@
     import Notifications from "./components/Notifications.svelte";
     import CamForm from "./components/CamForm.svelte";
     import LiveCamera from "./components/LiveCamera.svelte";
-    import Calendar from "./components/Calender.svelte";
+    // import Calendar from "./components/Calender.svelte";
 
     let messages = [];
 
