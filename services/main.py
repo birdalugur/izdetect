@@ -6,14 +6,23 @@ from tracking import DetectionProcessor
 from notify import NotifyProcessor
 from multiprocessing import Event
 
+
+def fetch_camera_urls():
+    return redis_client.lrange("camera_urls", 0, -1)
+
+
 def start_tasks():
-    global running
+    global running, camera_urls
+
     if running.is_set():
         print("Tasks are already running.")
         return
-    
+
+    camera_urls = fetch_camera_urls()
+    print(f"Updated camera URLs: {camera_urls}")
+
     running.set()
-    
+
     for idx, url in enumerate(camera_urls, start=1):
         frame_producer = FrameProducer(video_source=url, output_queue=f"camera{idx}")
         inference = Inference(
@@ -38,36 +47,38 @@ def start_tasks():
     manager.start_all()
     thread_runner.start_all()
 
+
 def stop_tasks():
     global running
     if not running.is_set():
         print("No tasks are running.")
         return
-    
+
     running.clear()
     manager.stop_all()
     thread_runner.stop_all()
     print("All tasks stopped. Waiting for start command.")
 
+
 def redis_listener():
-    redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
+    redis_client = redis.Redis(host="localhost", port=6379, decode_responses=True)
     pubsub = redis_client.pubsub()
-    pubsub.subscribe('task_control')
-    
+    pubsub.subscribe("task_control")
+
     for message in pubsub.listen():
-        if message['type'] == 'message':
-            command = message['data'].strip().lower()
-            if command == 'start':
+        if message["type"] == "message":
+            command = message["data"].strip().lower()
+            if command == "start":
                 start_tasks()
-            elif command == 'stop':
+            elif command == "stop":
                 stop_tasks()
+
 
 if __name__ == "__main__":
     manager = Runner(mode="process")
     thread_runner = Runner(mode="thread")
     running = Event()
-    
-    redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
-    camera_urls = redis_client.lrange('camera_urls', 0, -1)  # Redis listesinden URL'leri al
-    
+
+    redis_client = redis.Redis(host="localhost", port=6379, decode_responses=True)
+
     redis_listener()
