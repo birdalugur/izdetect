@@ -118,9 +118,17 @@ async def start_detection():
             for cam in cameras
         ]
 
-        redis_client.set("camera_urls", json.dumps(rtsp_urls))
+        # Kamera URL'lerini Redis'e kaydet
+        redis_client.delete("camera_urls")  # Önce eski veriyi temizle
+        redis_client.rpush("camera_urls", *rtsp_urls)
 
-        return {"message": "Camera URLs set successfully", "rtsp_urls": rtsp_urls}
+        # Redis Pub/Sub ile "start" komutunu yayınla
+        redis_client.publish("task_control", "start")
+
+        return {
+            "message": "Camera URLs set and start command sent",
+            "rtsp_urls": rtsp_urls,
+        }
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="No cameras found")
     except Exception as e:
