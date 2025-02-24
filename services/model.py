@@ -42,7 +42,8 @@ def process_frame(frame):
 
     del inputs
     del outputs
-    torch.cuda.empty_cache()
+    if device == "cuda":
+        torch.cuda.empty_cache()
     return results
 
 
@@ -53,7 +54,7 @@ def process_batch(frames):
     returns: a list of dictionaries with keys: dict_keys(['scores', 'labels', 'boxes']) containing detection results.
     """
     timer.start("processor")
-    inputs = processor(images=frames, return_tensors="pt", device="cuda").to(
+    inputs = processor(images=frames, return_tensors="pt", device=device).to(
         device, dtype=torch.float16, non_blocking=True
     )
     timer.stop("processor")
@@ -75,7 +76,8 @@ def process_batch(frames):
 
     del outputs
     del inputs
-    torch.cuda.empty_cache()
+    if device == "cuda":
+        torch.cuda.empty_cache()
 
     return results
 
