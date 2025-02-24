@@ -118,8 +118,7 @@ async def start_detection():
             for cam in cameras
         ]
 
-        # Kamera URL'lerini Redis'e kaydet
-        redis_client.delete("camera_urls")  # Önce eski veriyi temizle
+        redis_client.delete("camera_urls")
         redis_client.rpush("camera_urls", *rtsp_urls)
 
         # Redis Pub/Sub ile "start" komutunu yayınla
@@ -139,6 +138,7 @@ async def start_detection():
 async def stop_detection():
     try:
         redis_client.set("stop_signal", "1")
+        redis_client.publish("task_control", "stop")
         return {"message": "Frame producer stopped successfully"}
     except Exception as e:
         raise HTTPException(
