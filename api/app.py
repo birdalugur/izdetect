@@ -1,10 +1,12 @@
 import json
+import psutil
 import cv2
 from fastapi import FastAPI, HTTPException, Path, Request
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
+
 
 import redis
 import aioredis
@@ -275,6 +277,12 @@ async def get_cameras():
         return cameras
     except FileNotFoundError:
         return []
+
+
+@app.get("/ram")
+def get_ram_usage():
+    ram = psutil.virtual_memory()
+    return {"total": ram.total, "used": ram.used}
 
 
 if __name__ == "__main__":
