@@ -12,10 +12,8 @@
                 const cameras = await response.json();
                 cameraList.set(
                     cameras.map((cam) => ({
+                        id: cam.id,
                         ip: cam.ip,
-                        port: cam.port,
-                        username: cam.username,
-                        password: "****",
                     })),
                 );
             }
@@ -25,7 +23,7 @@
     };
 
     const addCamera = async () => {
-        if (camera.ip && camera.port && camera.username && camera.password) {
+        if (camera.ip && camera.id) {
             cameraList.update((cameras) => [...cameras, { ...camera }]);
 
             const response = await fetch("http://localhost:8000/set-cameras", {
@@ -41,7 +39,7 @@
                 alert("Hata oluştu!");
             }
 
-            camera = { ip: "", port: "", username: "", password: "" };
+            camera = { id: "", ip: "" };
         }
     };
 
@@ -96,28 +94,17 @@
             <h3 class="text-sm font-semibold">Kamera Ekle</h3>
             <input
                 type="text"
+                placeholder="ID"
+                bind:value={camera.id}
+                class="p-1 border rounded w-full mt-2 text-sm"
+            />
+            <input
+                type="text"
                 placeholder="IP Adresi"
                 bind:value={camera.ip}
                 class="p-1 border rounded w-full mt-2 text-sm"
             />
-            <input
-                type="text"
-                placeholder="Port"
-                bind:value={camera.port}
-                class="p-1 border rounded w-full mt-2 text-sm"
-            />
-            <input
-                type="text"
-                placeholder="Kullanici Adi"
-                bind:value={camera.username}
-                class="p-1 border rounded w-full mt-2 text-sm"
-            />
-            <input
-                type="password"
-                placeholder="Şifre"
-                bind:value={camera.password}
-                class="p-1 border rounded w-full mt-2 text-sm"
-            />
+
             <button
                 on:click={addCamera}
                 class="bg-blue-500 text-white p-2 rounded-lg shadow-md w-full mt-3 text-sm"
@@ -133,10 +120,8 @@
                         class="border p-2 my-2 rounded bg-white flex justify-between items-center"
                     >
                         <div>
-                            <span class="font-semibold"
-                                >{cam.ip}:{cam.port}</span
-                            >
-                            - {cam.username}
+                            <span class="font-semibold">{cam.ip.slice(5,20)}</span>
+                            - {cam.id}
                         </div>
                         <button
                             on:click={() => deleteCamera(index)}

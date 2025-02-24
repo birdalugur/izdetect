@@ -1,8 +1,6 @@
 [
     {
-        "ip": "10.100.10.94",
-        "port": "554",
-        "username": "deneme",
-        "password": "155115"
+        "id": "1",
+        "ip": "rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10"
     }
 ]

@@ -230,10 +230,8 @@ async def update_settings(settings: Settings):
 
 
 class Camera(BaseModel):
+    id: str
     ip: str
-    port: str
-    username: str
-    password: str
 
 
 camera_list = []
@@ -250,30 +248,13 @@ async def set_cameras(cameras: list[Camera]):
     return {"message": "Kamera bilgileri kaydedildi!"}
 
 
-@app.get("/get-camera-urls")
-async def get_camera_urls():
-    try:
-        with open("cameras.json", "r") as f:
-            cameras = json.load(f)
-
-        camera_urls = [
-            {
-                "CAMERA_URL": f"http://{cam['ip']}:{cam['port']}/axis-cgi/mjpg/video.cgi?resolution=1280x800&fps=10",
-                "RTSP_URL": f"rtsp://{cam['username']}:{cam['password']}@{cam['ip']}:{cam['port']}/axis-media/media.amp?adjustablelivestream=1&fps=10",
-            }
-            for cam in cameras
-        ]
-
-        return camera_urls
-    except FileNotFoundError:
-        return []
-
-
 @app.get("/get-cameras")
 async def get_cameras():
+    global camera_list
     try:
         with open("cameras.json", "r") as f:
             cameras = json.load(f)
+            camera_list = cameras
         return cameras
     except FileNotFoundError:
         return []
