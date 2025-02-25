@@ -1,46 +1,46 @@
 import time
 import model
 from typing import List
-from redis_client import RedisClient
+import redis
 from image_processor import ImageProcessor
+from base import BaseClass
 
 
-class Inference:
+class Inference(BaseClass):
     def __init__(
         self,
-        redis_client: RedisClient,
         input_queue: str,
         output_queue: str,
         image_bytes_queue: str,
+        batch_size: int = 5,
+        redis_client: redis.Redis = None,
     ):
-        self.redis_client = redis_client
+        super().__init__(redis_client)
         self.input_queue = input_queue
         self.output_queue = output_queue
         self.image_bytes_queue = image_bytes_queue
+        self.batch_size = batch_size
         self.idle_count = 0
+        self.stop_signal = False
 
     def process_single_frame(self, image_bytes: bytes):
-        """Processes a single image frame."""
         image = ImageProcessor.decode_image(image_bytes)
         detections = model.process_frame(image)
         ImageProcessor.save_image_with_detections(image, detections)
         self.redis_client.push_to_queue(self.image_bytes_queue, [image_bytes])
 
     def process_batch_frames(self, image_bytes_list: List[bytes]):
-        """Processes a batch of image frames."""
         images = ImageProcessor.decode_image_batch(image_bytes_list)
         detection_results = model.process_batch(images)
         serialized_results = ImageProcessor.serialize_detection_results(
             detection_results
         )
-        self.redis_client.push_to_queue(self.output_queue, serialized_results)
-        self.redis_client.push_to_queue(self.image_bytes_queue, image_bytes_list)
+        self.redis_client.lpush(self.output_queue, *serialized_results)
+        self.redis_client.lpush(self.image_bytes_queue, *image_bytes_list)
 
-    def start(self):
-        """Main loop to process frames from the Redis queue."""
-        while True:
-            image_bytes = self.redis_client.pop_from_queue(self.input_queue, 5)
-
+    def run(self):
+        while not self.stop_signal:
+            image_bytes = self.redis_client.rpop(self.input_queue, self.batch_size)
             if image_bytes:
                 self.idle_count = 0
                 if isinstance(image_bytes, bytes):
@@ -51,18 +51,19 @@ class Inference:
                 self.idle_count += 1
                 print("Queue is empty, waiting...")
                 time.sleep(1)
-
                 if self.idle_count >= 5:
                     print("Queue is empty, entering sleep mode.")
                     time.sleep(5)
 
+    def stop(self):
+        self.stop_signal = True
+
 
 if __name__ == "__main__":
-    redis_client = RedisClient(host="localhost", port=6379)
     inference = Inference(
-        redis_client=redis_client,
-        input_queue="frames_camera1",
-        output_queue="detections",
-        image_bytes_queue="image_bytes",
+        input_queue="camera1",
+        output_queue="inference1",
+        image_bytes_queue="camera1_inf",
+        batch_size=10,
     )
-    inference.start()
+    inference.run()

@@ -1,70 +1,84 @@
-from multiprocessing import Process
-import threading
-import frame_producer
-import inference
-import tracking
-import notify
-from  redis_client import RedisClient
+import redis
+from runer import Runner
+from frame_producer import FrameProducer
+from inference import Inference
+from tracking import DetectionProcessor
+from notify import NotifyProcessor
+from multiprocessing import Event
 
 
-def start_frame_producer():
-    producer = frame_producer.FrameProducer(
-        output_queue="frames_camera1", url_key="camera_url"
-    )
-    producer.capture_frames(encoding_method="binary")
+def fetch_camera_urls():
+    return redis_client.lrange("camera_urls", 0, -1)
 
 
-def start_inference():
-    redis_client = RedisClient(host="localhost", port=6379)
-    frame_processor = inference.Inference(
-        redis_client=redis_client,
-        input_queue="frames_camera1",
-        output_queue="detections",
-        image_bytes_queue="image_bytes",
-    )
-    frame_processor.start()
+def start_tasks():
+    global running, camera_urls
+
+    if running.is_set():
+        print("Tasks are already running.")
+        return
+
+    camera_urls = fetch_camera_urls()
+    print(f"Updated camera URLs: {camera_urls}")
+
+    running.set()
+
+    for idx, url in enumerate(camera_urls, start=1):
+        frame_producer = FrameProducer(video_source=url, output_queue=f"camera{idx}")
+        inference = Inference(
+            input_queue=f"camera{idx}",
+            output_queue=f"inference{idx}",
+            image_bytes_queue=f"camera{idx}_inf",
+        )
+        detection_processor = DetectionProcessor(
+            input_queue=f"inference{idx}", output_queue=f"tracking{idx}"
+        )
+        notify_processor = NotifyProcessor(
+            image_queue=f"camera{idx}_inf",
+            detection_queue=f"tracking{idx}",
+            camera_id=idx,
+        )
+
+        manager.add_instance(frame_producer)
+        manager.add_instance(detection_processor)
+        manager.add_instance(notify_processor)
+        thread_runner.add_instance(inference)
+
+    manager.start_all()
+    thread_runner.start_all()
 
 
-def start_tracking():
-    processor = tracking.DetectionProcessor(
-        redis_host="localhost",
-        redis_port=6379,
-        input_queue="detections",
-        output_queue="detection_ids",
-        sensitivity=0.2,
-        memory=5,
-    )
+def stop_tasks():
+    global running
+    if not running.is_set():
+        print("No tasks are running.")
+        return
 
-    settings_thread = threading.Thread(
-        target=tracking.watch_settings, args=(processor,), daemon=True
-    )
-    settings_thread.start()
-    processor.process_detections()
+    running.clear()
+    manager.stop_all()
+    thread_runner.stop_all()
+    print("All tasks stopped. Waiting for start command.")
 
 
-def start_notification():
-    notify.notify_objects(image_queue="image_bytes", detection_queue="detection_ids", camera_id=2)
+def redis_listener():
+    redis_client = redis.Redis(host="localhost", port=6379, decode_responses=True)
+    pubsub = redis_client.pubsub()
+    pubsub.subscribe("task_control")
+
+    for message in pubsub.listen():
+        if message["type"] == "message":
+            command = message["data"].strip().lower()
+            if command == "start":
+                start_tasks()
+            elif command == "stop":
+                stop_tasks()
 
 
 if __name__ == "__main__":
-    processes = [
-        Process(target=start_frame_producer),
-        Process(target=start_tracking),
-        Process(target=start_notification),
-    ]
+    manager = Runner(mode="process")
+    thread_runner = Runner(mode="thread")
+    running = Event()
 
-    threads = [
-        threading.Thread(target=start_inference, daemon=True),
-    ]
+    redis_client = redis.Redis(host="localhost", port=6379, decode_responses=True)
 
-    for process in processes:
-        process.start()
-
-    for thread in threads:
-        thread.start()
-
-    for process in processes:
-        process.join()
-
-    for thread in threads:
-        thread.join()
+    redis_listener()

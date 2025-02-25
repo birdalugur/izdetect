@@ -1,10 +1,12 @@
 import json
+import psutil
 import cv2
 from fastapi import FastAPI, HTTPException, Path, Request
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
+
 
 import redis
 import aioredis
@@ -19,7 +21,8 @@ from db import (
 
 OUTPUT_FOLDER = os.path.abspath("data/")
 CAMERA_URL = "http://10.100.10.94/axis-cgi/mjpg/video.cgi?resolution=1280x800&fps=10"
-RTSP_URL = "rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10"
+# RTSP_URL = "rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10"
+RTSP_URL = "/home/birdal/izdetect/sahil.mp4"
 
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
@@ -109,20 +112,31 @@ async def get_image(
 @app.post("/start-detection")
 async def start_detection():
     try:
-        redis_client.set("camera_url", RTSP_URL)
+        with open("cameras.json", "r") as f:
+            cameras = json.load(f)
+
+        rtsp_urls = [cam["ip"] for cam in cameras]
+
+        redis_client.delete("camera_urls")
+        redis_client.rpush("camera_urls", *rtsp_urls)
+
+        redis_client.publish("task_control", "start")
+
         return {
-            "message": "Camera URL set successfully",
-            "camera_url": RTSP_URL,
-            "default_camera_url": CAMERA_URL,
+            "message": "Camera URLs set and start command sent",
+            "rtsp_urls": rtsp_urls,
         }
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="No cameras found")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to set camera URL: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to set camera URLs: {e}")
 
 
 @app.post("/stop-detection")
 async def stop_detection():
     try:
         redis_client.set("stop_signal", "1")
+        redis_client.publish("task_control", "stop")
         return {"message": "Frame producer stopped successfully"}
     except Exception as e:
         raise HTTPException(
@@ -147,14 +161,13 @@ async def get_events(request: Request):
                 if await request.is_disconnected():
                     break
 
-                # Redis kanalindan mesaj al
                 message = await pubsub.get_message(
                     ignore_subscribe_messages=True, timeout=1
                 )
                 if message:
                     message_data = json.loads(message["data"])
                     message_data = map_labels(message_data, selected_label_map)
-                    yield f"data: {json.dumps(message_data)}\n\n"                    
+                    yield f"data: {json.dumps(message_data)}\n\n"
                     # yield f"data: {message['data'].decode('utf-8')}\n\n"
         finally:
             # Kaynaklari temizle
@@ -166,34 +179,51 @@ async def get_events(request: Request):
     return StreamingResponse(redis_event_generator(), media_type="text/event-stream")
 
 
-def generate_frames():
-    cap = cv2.VideoCapture(RTSP_URL)
-    if not cap.isOpened():
-        print("RTSP akişina bağlanilamadi.")
-        return
+@app.get("/video/{camera_id}")
+async def video_feed(camera_id: str):
+    """Seçilen kameraya göre MJPEG akişi döndür."""
 
-    while True:
-        success, frame = cap.read()
-        if not success:
-            print("Görüntü alinamadi.")
-            break
+    try:
+        cameras = read_cameras()
 
-        _, buffer = cv2.imencode(".jpg", frame)
-        frame_bytes = buffer.tobytes()
+        # Seçilen kameranin bilgilerini al
+        selected_camera = next((cam for cam in cameras if cam["id"] == camera_id), None)
 
-        yield (
-            b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
+        if not selected_camera:
+            raise HTTPException(status_code=404, detail="Kamera bulunamadi")
+
+        rtsp_url = selected_camera["ip"]
+
+        def generate_frames(rtsp_url):
+            cap = cv2.VideoCapture(rtsp_url)
+            if not cap.isOpened():
+                print(f"{camera_id} için RTSP akişina bağlanilamadi.")
+                return
+
+            while True:
+                success, frame = cap.read()
+                if not success:
+                    print(f"{camera_id} için görüntü alinamadi.")
+                    break
+
+                _, buffer = cv2.imencode(".jpg", frame)
+                frame_bytes = buffer.tobytes()
+                yield (
+                    b"--frame\r\n"
+                    b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
+                )
+
+            cap.release()
+
+        return StreamingResponse(
+            generate_frames(rtsp_url),
+            media_type="multipart/x-mixed-replace; boundary=frame",
         )
 
-    cap.release()
-
-
-@app.get("/video")
-async def video_feed():
-    """Tarayiciya MJPEG akişi döndür."""
-    return StreamingResponse(
-        generate_frames(), media_type="multipart/x-mixed-replace; boundary=frame"
-    )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Kamera listesi bulunamadi")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Akiş başlatilamadi: {e}")
 
 
 class Settings(BaseModel):
@@ -211,5 +241,47 @@ async def update_settings(settings: Settings):
         raise HTTPException(status_code=500, detail=f"Failed to update settings: {e}")
 
 
+class Camera(BaseModel):
+    id: str
+    ip: str
+
+
+camera_list = []
+
+
+@app.post("/set-cameras")
+async def set_cameras(cameras: list[Camera]):
+    global camera_list
+    camera_list = cameras
+
+    with open("cameras.json", "w") as f:
+        json.dump([cam.model_dump() for cam in camera_list], f, indent=4)
+
+    return {"message": "Kamera bilgileri kaydedildi!"}
+
+
+def read_cameras():
+    try:
+        with open("cameras.json", "r") as f:
+            cameras = json.load(f)
+        return cameras
+    except FileNotFoundError:
+        return []
+
+
+@app.get("/get-cameras")
+async def get_cameras():
+    global camera_list
+    cameras = read_cameras()
+    camera_list = cameras
+    return cameras
+
+
+@app.get("/ram")
+def get_ram_usage():
+    ram = psutil.virtual_memory()
+    return {"total": ram.total, "used": ram.used}
+
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)

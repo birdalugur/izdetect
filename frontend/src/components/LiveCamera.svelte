@@ -1,39 +1,75 @@
 <script>
-    import { cameraUrls } from "./store";
+    import { onMount } from "svelte";
+    import { writable } from "svelte/store";
 
-    let urls;
-    cameraUrls.subscribe((value) => {
-        urls = value;
-    });
-
-    const videoStreamUrl = "http://localhost:8000/video";
+    let cameraList = writable([]);
+    let selectedCamera = writable(null);
+    const defaultStreamUrl = "http://localhost:8000/video";
 
     let isFullscreen = false;
 
     const toggleFullscreen = () => {
         isFullscreen = !isFullscreen;
     };
+
+    const fetchCameras = async () => {
+        try {
+            const response = await fetch("http://localhost:8000/get-cameras");
+            if (response.ok) {
+                const cameras = await response.json();
+                cameraList.set(cameras);
+                if (cameras.length > 0) {
+                    selectedCamera.set(cameras[0]);
+                }
+            }
+        } catch (error) {
+            console.error("Kameralar alinirken hata oluştu:", error);
+        }
+    };
+
+    const selectCamera = (camera) => {
+        selectedCamera.set(camera);
+    };
+
+    onMount(fetchCameras);
 </script>
 
-<!-- svelte-ignore a11y-click-events-have-key-events -->
-<div class="camera-container" class:isFullscreen>
-    <h4>Cam - 2</h4>
-    <img
-        class="camera-view"
-        src={`${videoStreamUrl}`}
-        alt="IP Kamera Canlı Yayını"
-        on:click={toggleFullscreen}
-    />
-    {#if isFullscreen}
-        <div class="fullscreen-overlay" on:click={toggleFullscreen}>
-            <img
-                class="fullscreen-video"
-                src={`${videoStreamUrl}`}
-                alt="IP Kamera Tam Ekran"
-            />
-            <button class="close-btn" on:click={toggleFullscreen}>✕</button>
-        </div>
-    {/if}
+<div class="bg-gray-100 p-2 rounded-lg shadow-lg mx-auto mt-2">
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <div class="camera-container" class:isFullscreen>
+        <h4>Cam - 2</h4>
+        <img
+            class="camera-view"
+            src={$selectedCamera
+                ? `http://localhost:8000/video/${$selectedCamera.id}`
+                : defaultStreamUrl}
+            alt="IP Kamera Canli Yayini"
+            on:click={toggleFullscreen}
+        />
+        {#if isFullscreen}
+            <div class="fullscreen-overlay" on:click={toggleFullscreen}>
+                <img
+                    class="fullscreen-video"
+                    src={`http://localhost:8000/video/${$selectedCamera.id}`}
+                    alt="IP Kamera Tam Ekran"
+                />
+                <button class="close-btn" on:click={toggleFullscreen}>✕</button>
+            </div>
+        {/if}
+    </div>
+
+    <div class="camera-selector">
+        {#each $cameraList as cam}
+            <button
+                class="camera-button {$selectedCamera?.id === cam.id
+                    ? 'active'
+                    : ''}"
+                on:click={() => selectCamera(cam)}
+            >
+                {cam.id}
+            </button>
+        {/each}
+    </div>
 </div>
 
 <style>
@@ -94,6 +130,29 @@
         border-radius: 50%;
         font-size: 18px;
         cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .camera-selector {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .camera-button {
+        padding: 8px 12px;
+        border: 2px solid #007bff;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .camera-button.active,
+    .camera-button:hover {
+        background-color: #007bff;
+        color: white;
     }
 
     .close-btn:hover {
