@@ -123,7 +123,6 @@ async def start_detection():
         redis_client.delete("camera_urls")
         redis_client.rpush("camera_urls", *rtsp_urls)
 
-        # Redis Pub/Sub ile "start" komutunu yayınla
         redis_client.publish("task_control", "start")
 
         return {
@@ -165,7 +164,6 @@ async def get_events(request: Request):
                 if await request.is_disconnected():
                     break
 
-                # Redis kanalindan mesaj al
                 message = await pubsub.get_message(
                     ignore_subscribe_messages=True, timeout=1
                 )
@@ -184,34 +182,51 @@ async def get_events(request: Request):
     return StreamingResponse(redis_event_generator(), media_type="text/event-stream")
 
 
-def generate_frames():
-    cap = cv2.VideoCapture(RTSP_URL)
-    if not cap.isOpened():
-        print("RTSP akişina bağlanilamadi.")
-        return
+@app.get("/video/{camera_id}")
+async def video_feed(camera_id: str):
+    """Seçilen kameraya göre MJPEG akişi döndür."""
 
-    while True:
-        success, frame = cap.read()
-        if not success:
-            print("Görüntü alinamadi.")
-            break
+    try:
+        cameras = read_cameras()
 
-        _, buffer = cv2.imencode(".jpg", frame)
-        frame_bytes = buffer.tobytes()
+        # Seçilen kameranin bilgilerini al
+        selected_camera = next((cam for cam in cameras if cam["id"] == camera_id), None)
 
-        yield (
-            b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
+        if not selected_camera:
+            raise HTTPException(status_code=404, detail="Kamera bulunamadi")
+
+        rtsp_url = selected_camera["ip"]
+
+        def generate_frames(rtsp_url):
+            cap = cv2.VideoCapture(rtsp_url)
+            if not cap.isOpened():
+                print(f"{camera_id} için RTSP akişina bağlanilamadi.")
+                return
+
+            while True:
+                success, frame = cap.read()
+                if not success:
+                    print(f"{camera_id} için görüntü alinamadi.")
+                    break
+
+                _, buffer = cv2.imencode(".jpg", frame)
+                frame_bytes = buffer.tobytes()
+                yield (
+                    b"--frame\r\n"
+                    b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
+                )
+
+            cap.release()
+
+        return StreamingResponse(
+            generate_frames(rtsp_url),
+            media_type="multipart/x-mixed-replace; boundary=frame",
         )
 
-    cap.release()
-
-
-@app.get("/video")
-async def video_feed():
-    """Tarayiciya MJPEG akişi döndür."""
-    return StreamingResponse(
-        generate_frames(), media_type="multipart/x-mixed-replace; boundary=frame"
-    )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Kamera listesi bulunamadi")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Akiş başlatilamadi: {e}")
 
 
 class Settings(BaseModel):
@@ -248,16 +263,21 @@ async def set_cameras(cameras: list[Camera]):
     return {"message": "Kamera bilgileri kaydedildi!"}
 
 
-@app.get("/get-cameras")
-async def get_cameras():
-    global camera_list
+def read_cameras():
     try:
         with open("cameras.json", "r") as f:
             cameras = json.load(f)
-            camera_list = cameras
         return cameras
     except FileNotFoundError:
         return []
+
+
+@app.get("/get-cameras")
+async def get_cameras():
+    global camera_list
+    cameras = read_cameras()
+    camera_list = cameras
+    return cameras
 
 
 @app.get("/ram")
