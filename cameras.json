@@ -1,6 +1,10 @@
 [
     {
-        "id": "1",
+        "id": "2",
+        "ip": "/home/birdal/izdetect/sahil.mp4"
+    },
+    {
+        "id": "izsu_giris",
         "ip": "rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10"
     }
 ]
