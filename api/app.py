@@ -115,10 +115,7 @@ async def start_detection():
         with open("cameras.json", "r") as f:
             cameras = json.load(f)
 
-        rtsp_urls = [
-            f"rtsp://{cam['username']}:{cam['password']}@{cam['ip']}:{cam['port']}/axis-media/media.amp?adjustablelivestream=1&fps=10"
-            for cam in cameras
-        ]
+        rtsp_urls = [cam["ip"] for cam in cameras]
 
         redis_client.delete("camera_urls")
         redis_client.rpush("camera_urls", *rtsp_urls)
