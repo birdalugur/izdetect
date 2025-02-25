@@ -17,6 +17,7 @@ from db import (
     close_notification,
     clear_all_notifications,
     get_statistics,
+    get_notifications_by_date,
 )
 
 OUTPUT_FOLDER = os.path.abspath("data/")
@@ -76,6 +77,22 @@ async def get_notifications():
     ]
 
     return JSONResponse(notifications)
+
+
+@app.get("/notifications_by_date")
+async def get_notifications_by_date_endpoint(start_date: str, end_date: str):
+    try:
+        notifications = get_notifications_by_date(start_date, end_date)
+
+        # `labels` alanini eşle
+        notifications = [
+            map_labels(notification, selected_label_map)
+            for notification in notifications
+        ]
+
+        return JSONResponse(notifications)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/notifications/{notification_id}/close")
