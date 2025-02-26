@@ -72,7 +72,7 @@
 </div>
 
 {#if showModal}
-    <div class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center">
+    <div class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
         <div class="bg-white p-6 rounded-lg w-3/4 h-3/4 overflow-auto relative">
             <button class="absolute top-2 right-2 text-gray-600 hover:text-gray-800" on:click={() => showModal = false}>Kapat</button>
             <h2 class="text-lg font-semibold mb-4">Bildirimler</h2>
@@ -97,7 +97,7 @@
 {/if}
 
 {#if selectedImage}
-    <div class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 flex items-center justify-center">
+    <div class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 flex items-center justify-center z-50">
         <div class="relative bg-white p-4 rounded-lg">
             <button class="absolute top-2 right-2 text-gray-600 hover:text-gray-800" on:click={closeImage}>Kapat</button>
             <button class="absolute top-1/2 left-2 transform -translate-y-1/2 text-gray-600 hover:text-gray-800" on:click={showPreviousImage}>←</button>
