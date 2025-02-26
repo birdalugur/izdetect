@@ -1,10 +1,11 @@
 <script>
     import Control from "./components/Control.svelte";
     import Notifications from "./components/Notifications.svelte";
-    import CamForm from "./components/CamForm.svelte";
     import LiveCamera from "./components/LiveCamera.svelte";
     import Ram from "./components/Ram.svelte";
-    // import Calender from "./components/Calender.svelte";
+    import DateFilteredNotifications from "./components/FilterNotifications.svelte"; // Yeni bileşen
+
+    
 
     let messages = [];
 
@@ -22,6 +23,7 @@
     </div>
     <div class="w-2/5 p-2 bg-white">
         <LiveCamera />
+        <DateFilteredNotifications /> 
         <!-- <Calender /> -->
     </div>
     <div class="w-2/5 p-5 bg-gray-50 overflow-y-auto flex flex-col gap-2.5">
