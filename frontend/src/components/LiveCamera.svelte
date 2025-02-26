@@ -1,9 +1,11 @@
 <script>
     import { onMount } from "svelte";
     import { writable } from "svelte/store";
+    import CamForm from "./CamForm.svelte";
 
     let cameraList = writable([]);
     let selectedCamera = writable(null);
+    let showCameraForm = writable(false);
     const defaultStreamUrl = "http://localhost:8000/video";
 
     let isFullscreen = false;
@@ -29,6 +31,16 @@
 
     const selectCamera = (camera) => {
         selectedCamera.set(camera);
+    };
+
+    const toggleCameraForm = () => {
+        showCameraForm.set(!$showCameraForm);
+    };
+
+    const closeCameraForm = (event) => {
+        if (event.target.classList.contains("modal-overlay")) {
+            showCameraForm.set(false);
+        }
     };
 
     onMount(fetchCameras);
@@ -69,10 +81,45 @@
                 {cam.id}
             </button>
         {/each}
+        <button
+            class="camera-button bg-green-500 text-black ml-auto"
+            on:click={toggleCameraForm}>Kamera Yönetimi</button
+        >
     </div>
+
+    {#if $showCameraForm}
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <div class="modal-overlay" on:click={closeCameraForm}>
+            <div class="modal-content" on:click|stopPropagation>
+                <CamForm />
+            </div>
+        </div>
+    {/if}
 </div>
 
 <style>
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
+    }
+
+    .modal-content {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        width: 400px;
+        max-width: 90%;
+        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
     .camera-container {
         position: relative;
         width: 100%;
