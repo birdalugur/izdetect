@@ -1,4 +1,6 @@
 <script>
+    import FilterNotifications from "./FilterNotifications.svelte";
+
     let notifications = [];
     let selectedImage = null;
     let selectedNotificationId = null;
@@ -86,12 +88,8 @@
     setupEventSource();
 </script>
 
-<div class="flex justify-between items-center p-2 border rounded-md">
-    <form class="flex items-center bg-gray-50 border rounded-full px-2 py-1 w-full max-w-xl focus-within:border-gray-300">
-        <input type="text" placeholder="Filter by label" class="bg-transparent w-full focus:outline-none pr-4 font-semibold border-0 focus:ring-0" name="topic" />
-        <button class="bg-black text-white rounded-full px-4 py-1.5 font-medium">Search</button>
-    </form>
-
+<div class="flex justify-between items-center p-1.5 border rounded-md">
+    <FilterNotifications />
     <button class="text-red-600 hover:text-red-800" on:click={removeAllNotifications} title="Clear All Notifications">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="w-6 h-6">
             <path d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.7 23.7 0 0 0 -21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0 -16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z" />

@@ -60,13 +60,13 @@
     };
 </script>
 
-<div class="rounded-lg ">
+<div class="rounded-lg">
     <div class="flex space-x-4">
-        <input type="date" bind:value={startDate} class="border p-2 rounded" />
-        <input type="date" bind:value={endDate} class="border p-2 rounded" />
+        <input type="date" bind:value={startDate} class="border p-1.5 rounded w-48" />
+        <input type="date" bind:value={endDate} class="border p-1.5 rounded w-48" />
         <button
             on:click={fetchNotificationsByDate}
-            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1.5 px-6 rounded"
         >
             Filtrele
         </button>
