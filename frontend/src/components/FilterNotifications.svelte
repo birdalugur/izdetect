@@ -60,11 +60,8 @@
     };
 </script>
 
-<div class="p-4 bg-white rounded-lg shadow-md">
-    <h2 class="text-lg font-semibold mb-4">
-        Tarihe Göre Filtrelenmiş Bildirimler
-    </h2>
-    <div class="flex space-x-4 mb-4">
+<div class="rounded-lg ">
+    <div class="flex space-x-4">
         <input type="date" bind:value={startDate} class="border p-2 rounded" />
         <input type="date" bind:value={endDate} class="border p-2 rounded" />
         <button
