@@ -26,7 +26,9 @@
     };
 
     const removeAllNotifications = async () => {
-        const userConfirmed = window.confirm("Tüm bildirimleri silmek istediğinizden emin misiniz?");
+        const userConfirmed = window.confirm(
+            "Tüm bildirimleri silmek istediğinizden emin misiniz?",
+        );
         if (userConfirmed) {
             await fetch("http://localhost:8000/notifications/clear-all", {
                 method: "POST",
@@ -65,6 +67,7 @@
         }
     };
 
+    // const notificationSound = new Audio("/sounds/notification.mp3");
     function setupEventSource() {
         const eventSource = new EventSource("http://localhost:8000/events");
 
@@ -73,6 +76,8 @@
                 const data = JSON.parse(event.data);
                 console.log("veri tipi", typeof data);
                 notifications = [data, ...notifications];
+
+                // notificationSound.play();
             } catch (e) {
                 console.error("Hata: Gelen veri JSON formatında değil!", e);
             }
@@ -90,9 +95,19 @@
 
 <div class="flex justify-between items-center p-1.5 border rounded-md">
     <FilterNotifications />
-    <button class="text-red-600 hover:text-red-800" on:click={removeAllNotifications} title="Clear All Notifications">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="w-6 h-6">
-            <path d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.7 23.7 0 0 0 -21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0 -16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z" />
+    <button
+        class="text-red-600 hover:text-red-800"
+        on:click={removeAllNotifications}
+        title="Clear All Notifications"
+    >
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 448 512"
+            class="w-6 h-6"
+        >
+            <path
+                d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.7 23.7 0 0 0 -21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0 -16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"
+            />
         </svg>
     </button>
 </div>
@@ -101,31 +116,65 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {#each notifications as notification}
             <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <div class="bg-gray-100 p-4 rounded-md shadow hover:scale-105 transition cursor-pointer" on:click={() => showImage(notification.image_url, notification._id)}>
+            <div
+                class="bg-gray-100 p-4 rounded-md shadow hover:scale-105 transition cursor-pointer"
+                on:click={() =>
+                    showImage(notification.image_url, notification._id)}
+            >
                 <div class="flex flex-wrap gap-2">
                     {#each notification.labels as label}
                         {#each Object.entries(label) as [key, value]}
-                            <div class="bg-blue-100 border border-blue-300 rounded-md px-2 py-1 text-sm">
-                                <span class="text-blue-600 font-semibold">{key}</span>: {value}
+                            <div
+                                class="bg-blue-100 border border-blue-300 rounded-md px-2 py-1 text-sm"
+                            >
+                                <span class="text-blue-600 font-semibold"
+                                    >{key}</span
+                                >: {value}
                             </div>
                         {/each}
                     {/each}
                 </div>
-                <img src={"http://localhost:8000/output/" + notification.image_url} alt="Thumbnail" class="w-full rounded-md mt-2" />
-                <p class="text-gray-500 text-xs mt-2">{notification.time.split(".")[0]}</p>
+                <img
+                    src={"http://localhost:8000/output/" +
+                        notification.image_url}
+                    alt="Thumbnail"
+                    class="w-full rounded-md mt-2"
+                />
+                <p class="text-gray-500 text-xs mt-2">
+                    {notification.time.split(".")[0]}
+                </p>
             </div>
         {/each}
     </div>
 </div>
 
 {#if selectedImage}
-    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-50">
-        <button class="absolute left-5 text-white text-2xl" on:click={showPreviousImage}>←</button>
-        <img src={selectedImage} alt="Detected frame" class="max-w-full max-h-screen p-4" />
-        <button class="absolute right-5 text-white text-2xl" on:click={showNextImage}>→</button>
+    <div
+        class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-50"
+    >
+        <button
+            class="absolute left-5 text-white text-2xl"
+            on:click={showPreviousImage}>←</button
+        >
+        <img
+            src={selectedImage}
+            alt="Detected frame"
+            class="max-w-full max-h-screen p-4"
+        />
+        <button
+            class="absolute right-5 text-white text-2xl"
+            on:click={showNextImage}>→</button
+        >
         <div class="absolute bottom-5 flex gap-4">
-            <button class="bg-gray-200 px-4 py-2 rounded-md" on:click={closeImage}>Close</button>
-            <button class="bg-red-500 text-white px-4 py-2 rounded-md" on:click={() => removeNotification(selectedNotificationId)}>Remove Notification</button>
+            <button
+                class="bg-gray-200 px-4 py-2 rounded-md"
+                on:click={closeImage}>Close</button
+            >
+            <button
+                class="bg-red-500 text-white px-4 py-2 rounded-md"
+                on:click={() => removeNotification(selectedNotificationId)}
+                >Remove Notification</button
+            >
         </div>
     </div>
 {/if}
