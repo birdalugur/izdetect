@@ -1,6 +1,4 @@
 <script>
-    import { onMount } from "svelte";
-
     let startDate = "";
     let endDate = "";
     let notifications = [];
@@ -58,12 +56,33 @@
             showImage(previousNotification.image_url, previousNotification._id);
         }
     };
+
+    // TODO: Both delete and options methods are processed.
+    const deleteNotification = async (id) => {
+        try {
+            await fetch(`http://localhost:8000/delete_notification/${id}`, {
+                method: "DELETE",
+            });
+            notifications = notifications.filter((n) => n._id !== id);
+        } catch (error) {
+            console.error("Bildirim silinemedi:", error);
+            alert("Bildirim silinemedi.");
+        }
+    };
 </script>
 
 <div class="rounded-lg">
     <div class="flex space-x-4">
-        <input type="date" bind:value={startDate} class="border p-1.5 rounded w-48" />
-        <input type="date" bind:value={endDate} class="border p-1.5 rounded w-48" />
+        <input
+            type="date"
+            bind:value={startDate}
+            class="border p-1.5 rounded w-48"
+        />
+        <input
+            type="date"
+            bind:value={endDate}
+            class="border p-1.5 rounded w-48"
+        />
         <button
             on:click={fetchNotificationsByDate}
             class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1.5 px-6 rounded"
@@ -77,29 +96,36 @@
     <div
         class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
     >
-        <!-- Kapat butonu modal DIŞINDA, sağ üst köşede sabit duracak -->
-        <button
-            class="fixed top-4 right-4 bg-white px-4 py-2 rounded shadow-md text-gray-600 hover:text-gray-800 z-50"
-            on:click={() => (showModal = false)}
-        >
-            Kapat
-        </button>
+        <div class="bg-white rounded-lg w-3/4 h-3/4 overflow-auto relative">
+            <!-- Navbar -->
+            <div
+                class="bg-gray-200 px-4 py-2 flex justify-between items-center"
+            >
+                <h2 class="text-lg font-semibold">Bildirimler</h2>
+                <button
+                    class="bg-red-500 hover:bg-red-700 text-white px-4 py-2 rounded"
+                    on:click={() => (showModal = false)}
+                >
+                    Kapat
+                </button>
+            </div>
 
-        <div class="bg-white p-6 rounded-lg w-3/4 h-3/4 overflow-auto relative">
-            <h2 class="text-lg font-semibold mb-4">Bildirimler</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div
+                class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+            >
                 {#each notifications as notification}
                     <!-- svelte-ignore a11y-click-events-have-key-events -->
-                    <div
-                        class="border p-4 rounded-lg cursor-pointer"
-                        on:click={() =>
-                            showImage(notification.image_url, notification._id)}
-                    >
+                    <div class="border p-4 rounded-lg cursor-pointer">
                         <img
                             src={"http://localhost:8000/output/" +
                                 notification.image_url}
                             alt="Thumbnail"
-                            class="w-full rounded-md mb-2"
+                            class="w-full rounded-md mb-2 cursor-pointer"
+                            on:click={() =>
+                                showImage(
+                                    notification.image_url,
+                                    notification._id,
+                                )}
                         />
                         <div class="flex flex-wrap gap-2">
                             {#each notification.labels as label}
@@ -114,6 +140,15 @@
                         <p class="text-sm text-gray-600 mt-2">
                             {notification.time.split(".")[0]}
                         </p>
+                        <button
+                            class="mt-2 bg-red-500 hover:bg-red-700 text-white px-3 py-1 rounded"
+                            on:click={(event) => {
+                                event.stopPropagation();
+                                deleteNotification(notification._id);
+                            }}
+                        >
+                            Sil
+                        </button>
                     </div>
                 {/each}
             </div>

@@ -1,9 +1,11 @@
+import os
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from datetime import datetime
 
 
 client = MongoClient("mongodb://localhost:27017/")
+OUTPUT_FOLDER = "data/"
 # client = MongoClient("mongodb:27017") # for docker
 db = client["object_detection"]
 notifications_collection = db["notifications"]
@@ -24,6 +26,30 @@ def close_notification(notification_id):
         {"_id": ObjectId(notification_id)}, {"$set": {"status": "closed"}}
     )
     return result.matched_count
+
+
+def delete_image(image_filename):
+    if image_filename:
+        image_path = os.path.join(OUTPUT_FOLDER, image_filename)
+        print(image_path)
+        if os.path.exists(image_path):
+            print(True)
+            os.remove(image_path)
+
+
+def delete_notification(notification_id: str):
+    notification = notifications_collection.find_one_and_delete(
+        {"_id": ObjectId(notification_id)}
+    )
+
+    if not notification:
+        return None
+
+    image_filename = notification.get("image_url")
+
+    delete_image(image_filename)
+
+    return
 
 
 def clear_all_notifications():

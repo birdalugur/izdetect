@@ -18,6 +18,7 @@ from db import (
     clear_all_notifications,
     get_statistics,
     get_notifications_by_date,
+    delete_notification,
 )
 
 OUTPUT_FOLDER = os.path.abspath("data/")
@@ -102,6 +103,18 @@ async def close_notification_route(
     if close_notification(notification_id) == 0:
         raise HTTPException(status_code=404, detail="Notification not found")
     return {"message": "Notification closed successfully"}
+
+
+# TODO: Both delete and options methods are processed.
+@app.delete("/delete_notification/{notification_id}")
+async def delete_notification_route(notification_id: str):
+    """Belirtilen ID'ye sahip bildirimi siler."""
+    result = delete_notification(notification_id)
+    print("hi")
+    if result is not None:
+        return {"message": "Bildirim başariyla silindi."}
+
+    raise HTTPException(status_code=404, detail="Bildirim bulunamadı.")
 
 
 @app.get("/statistics")
