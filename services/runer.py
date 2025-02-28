@@ -45,9 +45,11 @@ class Runner:
             if self.mode == "process":
                 if task.is_alive():
                     task.terminate()
+                    task.join()
             else:
                 task.join(timeout=1)
         self.tasks.clear()
+        self.instances.clear()
 
 
 if __name__ == "__main__":
