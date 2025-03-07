@@ -92,6 +92,13 @@
 
     setupEventSource();
 </script>
+<style>
+    .image1 {
+        padding: 100px 0;
+        
+    }
+</style>
+
 
 <div class="flex justify-between items-center p-1.5 border rounded-md">
     <FilterNotifications />
@@ -151,37 +158,43 @@
 {#if selectedImage}
     <div class="fixed inset-0 flex items-center justify-center bg-white z-50">
         <button
-            class="absolute left-0 w-1/5 h-full bg-white hover:bg-gray-100 active:bg-gray-200 transition-all"
+            class="absolute left-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0"
             on:click={showPreviousImage}
         >
             <span
                 class="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-700 text-2xl"
-                >←</span
             >
+                ←
+            </span>
         </button>
-        <img class="max-w-3/5 max-h-screen p-4"
+        <img
+            class="max-w-full max-h-full image1"
             src={selectedImage}
             alt="Detected frame"
         />
         <button
-            class="absolute right-0 w-1/5 h-full bg-white hover:bg-gray-100 active:bg-gray-200 transition-all"
+            class="absolute right-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0"
             on:click={showNextImage}
         >
             <span
                 class="absolute right-5 top-1/2 transform -translate-y-1/2 text-gray-700 text-2xl"
-                >→</span
             >
+                →
+            </span>
         </button>
         <div class="absolute bottom-5 flex gap-4">
             <button
                 class="bg-gray-200 px-4 py-2 rounded-md"
-                on:click={closeImage}>Close</button
+                on:click={closeImage}
             >
+                Close
+            </button>
             <button
                 class="bg-red-500 text-white px-4 py-2 rounded-md"
                 on:click={() => removeNotification(selectedNotificationId)}
-                >Remove Notification</button
             >
+                Remove Notification
+            </button>
         </div>
     </div>
 {/if}
