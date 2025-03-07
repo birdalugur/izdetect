@@ -82,7 +82,7 @@
             </button>
         {/each}
         <button
-            class="camera-button bg-green-500 text-black ml-auto"
+            class="camera-button ml-auto"
             on:click={toggleCameraForm}>Kamera Yönetimi</button
         >
     </div>
@@ -188,19 +188,36 @@
     }
 
     .camera-button {
-        padding: 8px 12px;
-        border: 2px solid #007bff;
-        background-color: #f8f9fa;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
+    padding: 10px 15px; 
+    border: 2px solid #007bff; 
+    background-color: #f8f9fa; 
+    border-radius: 8px;
+    cursor: pointer; 
+    transition: all 0.3s ease; 
+    font-size: 16px; 
+    font-weight: 500; 
+    color: #007bff; 
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+}
 
-    .camera-button.active,
-    .camera-button:hover {
-        background-color: #007bff;
-        color: white;
-    }
+.camera-button:hover {
+    background-color: #007bff; 
+    color: #ffffff; 
+    border-color: #0056b3; 
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15); 
+    transform: translateY(-2px); 
+}
+
+.camera-button:focus {
+    outline: none; 
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.5); 
+}
+
+.camera-button:active {
+    background-color: #0056b3; 
+    transform: translateY(1px); 
+}
+
 
     .close-btn:hover {
         background: rgba(255, 255, 255, 1);

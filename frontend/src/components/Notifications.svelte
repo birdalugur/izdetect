@@ -92,13 +92,6 @@
 
     setupEventSource();
 </script>
-<style>
-    .image1 {
-        padding: 100px 0;
-        
-    }
-</style>
-
 
 <div class="flex justify-between items-center p-1.5 border rounded-md">
     <FilterNotifications />
@@ -168,7 +161,7 @@
             </span>
         </button>
         <img
-            class="max-w-full max-h-full image1"
+            class="max-w-full max-h-full py-24"
             src={selectedImage}
             alt="Detected frame"
         />
