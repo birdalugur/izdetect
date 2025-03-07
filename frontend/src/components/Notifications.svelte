@@ -149,22 +149,29 @@
 </div>
 
 {#if selectedImage}
-    <div
-        class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-50"
-    >
+    <div class="fixed inset-0 flex items-center justify-center bg-white z-50">
         <button
-            class="absolute left-5 text-white text-2xl"
-            on:click={showPreviousImage}>←</button
+            class="absolute left-0 w-1/5 h-full bg-white hover:bg-gray-100 active:bg-gray-200 transition-all"
+            on:click={showPreviousImage}
         >
-        <img
+            <span
+                class="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-700 text-2xl"
+                >←</span
+            >
+        </button>
+        <img class="max-w-3/5 max-h-screen p-4"
             src={selectedImage}
             alt="Detected frame"
-            class="max-w-full max-h-screen p-4"
         />
         <button
-            class="absolute right-5 text-white text-2xl"
-            on:click={showNextImage}>→</button
+            class="absolute right-0 w-1/5 h-full bg-white hover:bg-gray-100 active:bg-gray-200 transition-all"
+            on:click={showNextImage}
         >
+            <span
+                class="absolute right-5 top-1/2 transform -translate-y-1/2 text-gray-700 text-2xl"
+                >→</span
+            >
+        </button>
         <div class="absolute bottom-5 flex gap-4">
             <button
                 class="bg-gray-200 px-4 py-2 rounded-md"
