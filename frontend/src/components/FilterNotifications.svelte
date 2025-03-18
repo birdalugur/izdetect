@@ -98,21 +98,20 @@
     >
         <div class="bg-white rounded-lg w-3/4 h-3/4 overflow-auto relative">
             <!-- Navbar -->
-            <div
-                class="bg-gray-200 px-4 py-2 flex justify-between items-center"
-            >
-                <h2 class="text-lg font-semibold">Bildirimler</h2>
-                <button
-                    class="bg-red-500 hover:bg-red-700 text-white px-4 py-2 rounded"
-                    on:click={() => (showModal = false)}
-                >
-                    Kapat
-                </button>
-            </div>
 
             <div
                 class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
             >
+                <div
+                    class="fixed top-10 right-10 px-4 py-2 flex justify-between items-center z-10"
+                >
+                    <button
+                        class="bg-red-500 hover:bg-red-700 text-white px-4 pb-2 rounded"
+                        on:click={() => (showModal = false)}
+                    >
+                        <span class="text-2xl">&times;</span>
+                    </button>
+                </div>
                 {#each notifications as notification}
                     <!-- svelte-ignore a11y-click-events-have-key-events -->
                     <div class="border p-4 rounded-lg cursor-pointer">
@@ -132,8 +131,9 @@
                                 {#each Object.entries(label) as [key, value]}
                                     <span
                                         class="bg-gray-200 px-2 py-1 rounded-full text-sm"
-                                        >{key}: {value}</span
                                     >
+                                        {key}: {value}
+                                    </span>
                                 {/each}
                             {/each}
                         </div>
