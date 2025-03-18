@@ -57,6 +57,7 @@ def stop_tasks():
     running.clear()
     manager.stop_all()
     thread_runner.stop_all()
+    redis_client.flushall()
     print("All tasks stopped. Waiting for start command.")
 
 

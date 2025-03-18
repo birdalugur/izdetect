@@ -1,4 +1,6 @@
 <script>
+    import FilterNotifications from "./FilterNotifications.svelte";
+
     let notifications = [];
     let selectedImage = null;
     let selectedNotificationId = null;
@@ -28,7 +30,7 @@
             "Tüm bildirimleri silmek istediğinizden emin misiniz?",
         );
         if (userConfirmed) {
-            await fetch(`http://localhost:8000/notifications/clear-all`, {
+            await fetch("http://localhost:8000/notifications/clear-all", {
                 method: "POST",
             });
             notifications = [];
@@ -65,6 +67,7 @@
         }
     };
 
+    // const notificationSound = new Audio("/sounds/notification.mp3");
     function setupEventSource() {
         const eventSource = new EventSource("http://localhost:8000/events");
 
@@ -73,6 +76,8 @@
                 const data = JSON.parse(event.data);
                 console.log("veri tipi", typeof data);
                 notifications = [data, ...notifications];
+
+                // notificationSound.play();
             } catch (e) {
                 console.error("Hata: Gelen veri JSON formatında değil!", e);
             }
@@ -81,59 +86,50 @@
         eventSource.onerror = (err) => {
             console.error("SSE bağlantı hatası!", err);
             eventSource.close();
-            setTimeout(setupEventSource, 3000); // 3 saniye sonra yeniden bağlan
+            setTimeout(setupEventSource, 3000);
         };
     }
 
     setupEventSource();
 </script>
 
-<div class="head">
-    <form
-        class="mt-0 mx-auto max-w-xl py-0 px-2 rounded-full bg-gray-50 border flex focus-within:border-gray-300"
-    >
-        <input
-            type="text"
-            placeholder="Filter by label"
-            class="bg-transparent w-full focus:outline-none pr-4 font-semibold border-0 focus:ring-0 px-0 py-0"
-            name="topic"
-        /><button
-            class="flex flex-row items-center justify-center min-w-[130px] px-4 rounded-full font-medium tracking-wide border disabled:cursor-not-allowed disabled:opacity-50 transition ease-in-out duration-150 text-base bg-black text-white font-medium tracking-wide border-transparent py-1.5 h-[38px] -mr-3"
-        >
-            Search
-        </button>
-    </form>
-
+<div class="flex justify-between items-center p-1.5 border rounded-md">
+    <FilterNotifications />
     <button
-        class="clear-all-btn"
+        class="text-red-600 hover:text-red-800"
         on:click={removeAllNotifications}
         title="Clear All Notifications"
     >
-        <!-- Çöp kutusu simgesi SVG, kırmızı renkte ve dolgusuz olarak -->
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"
-            ><!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.--><path
-                d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.7 23.7 0 0 0 -21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0 -16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"
-            /></svg
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 448 512"
+            class="w-6 h-6"
         >
+            <path
+                d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.7 23.7 0 0 0 -21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0 -16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"
+            />
+        </svg>
     </button>
 </div>
 
-<div class="notifications-container">
-    <div class="notification-list">
+<div class="mt-2 text-center overflow-y-auto">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {#each notifications as notification}
             <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <!-- svelte-ignore a11y-no-static-element-interactions -->
             <div
-                class="notification-box"
+                class="bg-gray-100 p-4 rounded-md shadow hover:scale-105 transition cursor-pointer"
                 on:click={() =>
                     showImage(notification.image_url, notification._id)}
             >
-                <div class="notification-details">
+                <div class="flex flex-wrap gap-2">
                     {#each notification.labels as label}
                         {#each Object.entries(label) as [key, value]}
-                            <div class="detail">
-                                <span class="detail-key">{key}</span>:
-                                <span class="detail-value">{value}</span>
+                            <div
+                                class="bg-blue-100 border border-blue-300 rounded-md px-2 py-1 text-sm"
+                            >
+                                <span class="text-blue-600 font-semibold"
+                                    >{key}</span
+                                >: {value}
                             </div>
                         {/each}
                     {/each}
@@ -142,183 +138,56 @@
                     src={"http://localhost:8000/output/" +
                         notification.image_url}
                     alt="Thumbnail"
-                    class="thumbnail"
+                    class="w-full rounded-md mt-2"
                 />
-                <p class="time">{notification.time.split(".")[0]}</p>
+                <p class="text-gray-500 text-xs mt-2">
+                    {notification.time.split(".")[0]}
+                </p>
             </div>
         {/each}
     </div>
+</div>
 
-    {#if selectedImage}
-        <div class="image-viewer">
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <div class="overlay" on:click={closeImage}></div>
-            <button class="nav-btn left" on:click={showPreviousImage}>←</button>
-            <img src={selectedImage} alt="Detected frame" />
-            <button class="nav-btn right" on:click={showNextImage}>→</button>
-            <button on:click={closeImage}>Close</button>
-            <button on:click={() => removeNotification(selectedNotificationId)}>
+{#if selectedImage}
+    <div class="fixed inset-0 flex items-center justify-center bg-white z-50">
+        <button
+            class="absolute left-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0"
+            on:click={showPreviousImage}
+        >
+            <span
+                class="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-700 text-2xl"
+            >
+                ←
+            </span>
+        </button>
+        <img
+            class="max-w-full max-h-full py-24"
+            src={selectedImage}
+            alt="Detected frame"
+        />
+        <button
+            class="absolute right-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0"
+            on:click={showNextImage}
+        >
+            <span
+                class="absolute right-5 top-1/2 transform -translate-y-1/2 text-gray-700 text-2xl"
+            >
+                →
+            </span>
+        </button>
+        <div class="absolute bottom-5 flex gap-4">
+            <button
+                class="bg-gray-200 px-4 py-2 rounded-md"
+                on:click={closeImage}
+            >
+                Close
+            </button>
+            <button
+                class="bg-red-500 text-white px-4 py-2 rounded-md"
+                on:click={() => removeNotification(selectedNotificationId)}
+            >
                 Remove Notification
             </button>
         </div>
-    {/if}
-</div>
-
-<style>
-    .nav-btn {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        background: rgba(255, 255, 255, 0.6);
-        border: none;
-        font-size: 24px;
-        cursor: pointer;
-        padding: 10px;
-        border-radius: 50%;
-    }
-
-    .nav-btn:hover {
-        background: rgba(255, 255, 255, 0.8);
-    }
-
-    .nav-btn.left {
-        left: 10px;
-    }
-
-    .nav-btn.right {
-        right: 10px;
-    }
-
-    .head {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        /*border: 1px solid black;*/
-        border-radius: 5px;
-        padding: 5px;
-        height: 50px; /* Yüksekliği sabitleyin */
-    }
-
-    .clear-all-btn {
-        background: none;
-        border: none;
-        color: red;
-        cursor: pointer;
-        padding: 4px;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .clear-all-btn:hover {
-        color: darkred;
-    }
-
-    .notifications-container {
-        margin-top: 5px;
-        text-align: center;
-        max-height: 100%; /* Maksimum yükseklik belirleyin */
-        overflow-y: auto; /* Bildirimlerin kaydırılabilir olmasını sağlar */
-    }
-
-    .notification-list {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 10px;
-    }
-
-    .notification-box {
-        background: #f5f5f5;
-        border-radius: 8px;
-        padding: 10px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        transition: transform 0.2s;
-        cursor: pointer;
-    }
-
-    .notification-box:hover {
-        transform: scale(1.05);
-    }
-
-    .thumbnail {
-        width: 100%;
-        border-radius: 4px;
-    }
-
-    .image-viewer img {
-        max-width: 100%;
-    }
-
-    .image-viewer button {
-        margin: 10px;
-        padding: 8px 16px;
-        background: #f5f5f5;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: background 0.2s;
-    }
-
-    .image-viewer {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(0.8);
-        background: rgba(0, 0, 0, 0.8);
-        padding: 20px;
-        border-radius: 8px;
-        text-align: center;
-        opacity: 0;
-        animation: fadeInScale 0.3s ease-out forwards;
-        z-index: 1000;
-    }
-
-    @keyframes fadeInScale {
-        0% {
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(0.8);
-        }
-        100% {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
-        }
-    }
-
-    .image-viewer button:hover {
-        background: #ccc;
-    }
-    .notification-details {
-        display: flex;
-        justify-content: space-between;
-        margin: 10px 0;
-        font-size: 14px;
-        font-weight: bold;
-    }
-
-    .detail {
-        display: flex;
-        gap: 4px;
-        align-items: center;
-        padding: 4px;
-        background: #eef4fb;
-        border: 1px solid #d1e2f5;
-        border-radius: 4px;
-    }
-
-    .detail-key {
-        color: #2b6cb0;
-    }
-
-    .detail-value {
-        color: #1a202c;
-        font-weight: normal;
-    }
-
-    .time {
-        margin-top: 10px;
-        color: #718096;
-        font-size: 12px;
-    }
-</style>
+    </div>
+{/if}

@@ -17,6 +17,8 @@ from db import (
     close_notification,
     clear_all_notifications,
     get_statistics,
+    get_notifications_by_date,
+    delete_notification,
 )
 
 OUTPUT_FOLDER = os.path.abspath("data/")
@@ -78,6 +80,22 @@ async def get_notifications():
     return JSONResponse(notifications)
 
 
+@app.get("/notifications_by_date")
+async def get_notifications_by_date_endpoint(start_date: str, end_date: str):
+    try:
+        notifications = get_notifications_by_date(start_date, end_date)
+
+        # `labels` alanini eşle
+        notifications = [
+            map_labels(notification, selected_label_map)
+            for notification in notifications
+        ]
+
+        return JSONResponse(notifications)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.post("/notifications/{notification_id}/close")
 async def close_notification_route(
     notification_id: int = Path(..., description="The ID of the notification to close"),
@@ -85,6 +103,18 @@ async def close_notification_route(
     if close_notification(notification_id) == 0:
         raise HTTPException(status_code=404, detail="Notification not found")
     return {"message": "Notification closed successfully"}
+
+
+# TODO: Both delete and options methods are processed.
+@app.delete("/delete_notification/{notification_id}")
+async def delete_notification_route(notification_id: str):
+    """Belirtilen ID'ye sahip bildirimi siler."""
+    result = delete_notification(notification_id)
+    print("hi")
+    if result is not None:
+        return {"message": "Bildirim başariyla silindi."}
+
+    raise HTTPException(status_code=404, detail="Bildirim bulunamadı.")
 
 
 @app.get("/statistics")

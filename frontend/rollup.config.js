@@ -4,7 +4,7 @@ import commonjs from '@rollup/plugin-commonjs';
 import terser from '@rollup/plugin-terser';
 import resolve from '@rollup/plugin-node-resolve';
 import livereload from 'rollup-plugin-livereload';
-import css from 'rollup-plugin-css-only';
+// import css from 'rollup-plugin-css-only';
 import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
 import postcss from 'rollup-plugin-postcss';
@@ -52,7 +52,8 @@ export default {
 		// a separate file - better for performance
 		// css({ output: 'bundle.css' }),
 		postcss({
-			extract: "bundle.css",
+			extract: true,
+			inject: false,
 			plugins: [tailwindcss(), autoprefixer()],
 		}),
 
@@ -81,6 +82,8 @@ export default {
 		production && terser()
 	],
 	watch: {
-		clearScreen: false
+		clearScreen: false,
+		include: 'src/**',
+		exclude: 'node_modules/**',
 	}
 };
