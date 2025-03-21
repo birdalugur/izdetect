@@ -76,6 +76,46 @@
         }
     };
 
+    const deleteAllNotifications = async () => {
+        if (!startDate || !endDate) {
+            alert("Lütfen başlangiç ve bitiş tarihini seçin.");
+            return;
+        }
+
+        try {
+            const response = await fetch(
+                `http://localhost:8000/delete_notifications_by_date?start_date=${startDate}&end_date=${endDate}`,
+                {
+                    method: "DELETE",
+                }
+            );
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const result = await response.json();
+            alert(result.message);
+            notifications = [];
+        } catch (error) {
+            console.error("Bildirimler silinemedi:", error);
+            alert("Bildirimler silinemedi.");
+        }
+    };
+
+    const deleteCurrentPageNotifications = async () => {
+        try {
+            for (const notification of notifications) {
+                await fetch(`http://localhost:8000/delete_notification/${notification._id}`, {
+                    method: "DELETE",
+                });
+            }
+            notifications = [];
+            alert("Sayfadaki bildirimler silindi.");
+        } catch (error) {
+            console.error("Bildirimler silinemedi:", error);
+            alert("Bildirimler silinemedi.");
+        }
+    };
+
     const nextPage = () => {
         if (notifications.length === pageSize) {
             fetchNotificationsByDate(currentPage + 1);
@@ -187,6 +227,21 @@
                     disabled={notifications.length < pageSize}
                 >
                     Sonraki
+                </button>
+            </div>
+            <!-- Delete Buttons -->
+            <div class="flex justify-center mt-4 space-x-4">
+                <button
+                    class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                    on:click={deleteAllNotifications}
+                >
+                    Tümünü Sil
+                </button>
+                <button
+                    class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                    on:click={deleteCurrentPageNotifications}
+                >
+                    Sayfayı Sil
                 </button>
             </div>
         </div>

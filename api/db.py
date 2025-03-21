@@ -51,6 +51,13 @@ def delete_notification(notification_id: str):
 
     return
 
+def delete_all(start_date, end_date):
+    if isinstance(start_date, str):
+        start_date = datetime.fromisoformat(start_date)
+    if isinstance(end_date, str):
+        end_date = datetime.fromisoformat(end_date)
+    result = notifications_collection.delete_many({"time": {"$gte": start_date, "$lte": end_date}})
+    return result
 
 def clear_all_notifications():
     result = notifications_collection.update_many(
@@ -87,7 +94,7 @@ def get_notifications_by_date(start_date, end_date, skip=0, limit=12):
         .skip(skip)
         .limit(limit)
     )
-
+    
     for notification in notifications:
         notification["_id"] = str(notification["_id"])  # ObjectId'yi stringe çevir
         for key, value in notification.items():

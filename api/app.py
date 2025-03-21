@@ -1,5 +1,5 @@
 import json
-import psutil
+import psutil 
 import cv2
 from fastapi import FastAPI, HTTPException, Path, Request
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
@@ -19,6 +19,7 @@ from db import (
     get_statistics,
     get_notifications_by_date,
     delete_notification,
+    delete_all
 )
 
 OUTPUT_FOLDER = os.path.abspath("data/")
@@ -114,7 +115,17 @@ async def delete_notification_route(notification_id: str):
     if result is not None:
         return {"message": "Bildirim başariyla silindi."}
 
-    raise HTTPException(status_code=404, detail="Bildirim bulunamadı.")
+    raise HTTPException(status_code=404, detail="Bildirim bulunamadi.")
+
+
+@app.delete("/delete_notifications_by_date")
+async def delete_notifications_by_date(start_date: str, end_date: str):
+    """Belirtilen tarih araliğindaki tüm bildirimleri siler."""
+    try:        
+        result = delete_all(start_date, end_date)
+        return {"message": f"{result.deleted_count} bildirim silindi."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/statistics")
