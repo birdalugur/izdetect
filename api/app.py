@@ -81,9 +81,9 @@ async def get_notifications():
 
 
 @app.get("/notifications_by_date")
-async def get_notifications_by_date_endpoint(start_date: str, end_date: str):
+async def get_notifications_by_date_endpoint(start_date: str, end_date: str, skip: int = 0, limit: int = 12):
     try:
-        notifications = get_notifications_by_date(start_date, end_date)
+        notifications = get_notifications_by_date(start_date, end_date, skip, limit)
 
         # `labels` alanini eşle
         notifications = [

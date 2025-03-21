@@ -69,11 +69,13 @@ def get_statistics():
     return {"total_notifications": len(notifications), "object_stats": object_stats}
 
 
-def get_notifications_by_date(start_date, end_date):
+def get_notifications_by_date(start_date, end_date, skip=0, limit=12):
     """
     :param start_date: Başlangiç tarihi (ISO formatinda string veya datetime objesi)
     :param end_date: Bitiş tarihi (ISO formatinda string veya datetime objesi)
-    :return: Belirtilen tarih araliğindaki bildirimlerin listesi
+    :param skip: Kaç kayit atlanacak
+    :param limit: Kaç kayit alinacak
+    :return: Belirtilen tarih araligindaki bildirimlerin listesi
     """
     if isinstance(start_date, str):
         start_date = datetime.fromisoformat(start_date)
@@ -82,6 +84,8 @@ def get_notifications_by_date(start_date, end_date):
 
     notifications = list(
         notifications_collection.find({"time": {"$gte": start_date, "$lte": end_date}})
+        .skip(skip)
+        .limit(limit)
     )
 
     for notification in notifications:

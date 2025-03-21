@@ -5,22 +5,29 @@
     let showModal = false;
     let selectedImage = null;
     let selectedNotificationId = null;
+    let currentPage = 1;
+    let pageSize = 12;
+    let totalNotifications = 0;
 
-    const fetchNotificationsByDate = async () => {
+    const fetchNotificationsByDate = async (page = 1) => {
         if (!startDate || !endDate) {
             alert("Lütfen başlangiç ve bitiş tarihini seçin.");
             return;
         }
 
         try {
+            const skip = (page - 1) * pageSize;
             const response = await fetch(
-                `http://localhost:8000/notifications_by_date?start_date=${startDate}&end_date=${endDate}`,
+                `http://localhost:8000/notifications_by_date?start_date=${startDate}&end_date=${endDate}&skip=${skip}&limit=${pageSize}`,
             );
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            notifications = await response.json();
+            const data = await response.json();
+            notifications = data;
+            totalNotifications = data.length; // Burada toplam bildirim sayısını almak için endpoint'i güncellemeniz gerekebilir.
             showModal = true;
+            currentPage = page;
         } catch (error) {
             console.error("Bildirimler alinamadi:", error);
             alert("Bildirimler alinamadi.");
@@ -57,7 +64,6 @@
         }
     };
 
-    // TODO: Both delete and options methods are processed.
     const deleteNotification = async (id) => {
         try {
             await fetch(`http://localhost:8000/delete_notification/${id}`, {
@@ -67,6 +73,18 @@
         } catch (error) {
             console.error("Bildirim silinemedi:", error);
             alert("Bildirim silinemedi.");
+        }
+    };
+
+    const nextPage = () => {
+        if (notifications.length === pageSize) {
+            fetchNotificationsByDate(currentPage + 1);
+        }
+    };
+
+    const previousPage = () => {
+        if (currentPage > 1) {
+            fetchNotificationsByDate(currentPage - 1);
         }
     };
 </script>
@@ -84,7 +102,7 @@
             class="border p-1.5 rounded w-48"
         />
         <button
-            on:click={fetchNotificationsByDate}
+            on:click={() => fetchNotificationsByDate(1)}
             class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1.5 px-6 rounded"
         >
             Filtrele
@@ -98,7 +116,6 @@
     >
         <div class="bg-white rounded-lg w-3/4 h-3/4 overflow-auto relative">
             <!-- Navbar -->
-
             <div
                 class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
             >
@@ -151,6 +168,26 @@
                         </button>
                     </div>
                 {/each}
+            </div>
+            <!-- Pagination Controls -->
+            <div class="flex justify-center mt-4">
+                <button
+                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-l"
+                    on:click={previousPage}
+                    disabled={currentPage === 1}
+                >
+                    Önceki
+                </button>
+                <span class="bg-gray-200 px-4 py-2">
+                    Sayfa {currentPage}
+                </span>
+                <button
+                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-r"
+                    on:click={nextPage}
+                    disabled={notifications.length < pageSize}
+                >
+                    Sonraki
+                </button>
             </div>
         </div>
     </div>
