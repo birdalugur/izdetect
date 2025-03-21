@@ -87,7 +87,7 @@
                 `http://localhost:8000/delete_notifications_by_date?start_date=${startDate}&end_date=${endDate}`,
                 {
                     method: "DELETE",
-                }
+                },
             );
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -104,9 +104,12 @@
     const deleteCurrentPageNotifications = async () => {
         try {
             for (const notification of notifications) {
-                await fetch(`http://localhost:8000/delete_notification/${notification._id}`, {
-                    method: "DELETE",
-                });
+                await fetch(
+                    `http://localhost:8000/delete_notification/${notification._id}`,
+                    {
+                        method: "DELETE",
+                    },
+                );
             }
             notifications = [];
             alert("Sayfadaki bildirimler silindi.");
@@ -169,6 +172,7 @@
                         <span class="text-2xl">&times;</span>
                     </button>
                 </div>
+
                 {#each notifications as notification}
                     <!-- svelte-ignore a11y-click-events-have-key-events -->
                     <div class="border p-4 rounded-lg cursor-pointer">
@@ -252,24 +256,25 @@
     <div
         class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 flex items-center justify-center z-50"
     >
+        <button
+            class="absolute left-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0"
+            on:click={showPreviousImage}>←</button
+        >
         <div class="relative bg-white p-4 rounded-lg">
             <button
                 class="absolute top-2 right-2 text-gray-600 hover:text-gray-800"
                 on:click={closeImage}>Kapat</button
             >
-            <button
-                class="absolute top-1/2 left-2 transform -translate-y-1/2 text-gray-600 hover:text-gray-800"
-                on:click={showPreviousImage}>←</button
-            >
+
             <img
                 src={selectedImage}
                 alt="Detected frame"
                 class="max-w-full max-h-[80vh]"
             />
-            <button
-                class="absolute top-1/2 right-2 transform -translate-y-1/2 text-gray-600 hover:text-gray-800"
-                on:click={showNextImage}>→</button
-            >
         </div>
+        <button
+            class="absolute right-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0"
+            on:click={showNextImage}>→</button
+        >
     </div>
 {/if}
