@@ -148,6 +148,12 @@
 {#if selectedImage}
     <div class="fixed inset-0 flex items-center justify-center bg-white z-50">
         <button
+                class="absolute top-4 right-4 z-50 bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center text-gray-700 hover:text-gray-900"
+                on:click={closeImage}
+            >
+            <span class="text-xl">&times;</span>
+            </button>
+        <button
             class="absolute left-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0"
             on:click={showPreviousImage}
         >
@@ -173,12 +179,7 @@
             </span>
         </button>
         <div class="absolute bottom-5 flex gap-4">
-            <button
-                class="bg-gray-200 px-4 py-2 rounded-md"
-                on:click={closeImage}
-            >
-                Close
-            </button>
+            
             <button
                 class="bg-red-500 text-white px-4 py-2 rounded-md"
                 on:click={() => removeNotification(selectedNotificationId)}

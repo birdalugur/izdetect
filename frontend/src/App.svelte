@@ -5,9 +5,6 @@
     import Ram from "./components/Ram.svelte";
     import FilterNotifications from "./components/FilterNotifications.svelte";
 
-
-    
-
     let messages = [];
 
     const addMessage = (message) => {

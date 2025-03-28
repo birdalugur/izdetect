@@ -140,6 +140,7 @@
 <div class="w-full max-w-full">
     <div class="flex flex-col space-y-2">
         <div class="flex flex-col space-y-2">
+            <!-- svelte-ignore a11y-label-has-associated-control -->
             <label class="text-sm font-medium">Başlangıç</label>
             <div class="flex space-x-2">
                 <input
@@ -283,27 +284,36 @@
 
 {#if selectedImage}
     <div
-        class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 flex items-center justify-center z-50"
+        class="fixed top-0 left-0 w-full h-full bg-white flex items-center justify-center z-50"
     >
+        <!-- Kapat butonu sağ üst köşeye taşındı -->
         <button
-            class="absolute left-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0"
-            on:click={showPreviousImage}>←</button
+            class="absolute top-4 right-4 z-50 bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center text-gray-700 hover:text-gray-900"
+            on:click={closeImage}
         >
-        <div class="relative bg-white p-4 rounded-lg">
-            <button
-                class="absolute top-2 right-2 text-gray-600 hover:text-gray-800"
-                on:click={closeImage}>Kapat</button
-            >
+            <span class="text-xl">&times;</span>
+        </button>
 
+        <button
+            class="absolute left-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0 text-2xl"
+            on:click={showPreviousImage}
+        >
+            ←
+        </button>
+        
+        <div class="relative bg-white p-4 rounded-lg">
             <img
                 src={selectedImage}
                 alt="Detected frame"
                 class="max-w-full max-h-[80vh]"
             />
         </div>
+        
         <button
-            class="absolute right-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0"
-            on:click={showNextImage}>→</button
+            class="absolute right-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0 text-2xl"
+            on:click={showNextImage}
         >
+            →
+        </button>
     </div>
 {/if}
