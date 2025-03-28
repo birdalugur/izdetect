@@ -1,6 +1,8 @@
 <script>
     let startDate = "";
     let endDate = "";
+    let startTime = "";
+    let endTime = "";
     let notifications = [];
     let showModal = false;
     let selectedImage = null;
@@ -15,17 +17,20 @@
             return;
         }
 
+        const startDateTime = startTime ? `${startDate}T${startTime}` : startDate;
+        const endDateTime = endTime ? `${endDate}T${endTime}` : endDate;
+
         try {
             const skip = (page - 1) * pageSize;
             const response = await fetch(
-                `http://localhost:8000/notifications_by_date?start_date=${startDate}&end_date=${endDate}&skip=${skip}&limit=${pageSize}`,
+                `http://localhost:8000/notifications_by_date?start_date=${startDateTime}&end_date=${endDateTime}&skip=${skip}&limit=${pageSize}`,
             );
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const data = await response.json();
             notifications = data;
-            totalNotifications = data.length; // Burada toplam bildirim sayısını almak için endpoint'i güncellemeniz gerekebilir.
+            totalNotifications = data.length;
             showModal = true;
             currentPage = page;
         } catch (error) {
@@ -132,21 +137,43 @@
     };
 </script>
 
-<div class="rounded-lg">
-    <div class="flex space-x-4">
-        <input
-            type="date"
-            bind:value={startDate}
-            class="border p-1.5 rounded w-48"
-        />
-        <input
-            type="date"
-            bind:value={endDate}
-            class="border p-1.5 rounded w-48"
-        />
+<div class="w-full max-w-full">
+    <div class="flex flex-col space-y-2">
+        <div class="flex flex-col space-y-2">
+            <label class="text-sm font-medium">Başlangıç</label>
+            <div class="flex space-x-2">
+                <input
+                    type="date"
+                    bind:value={startDate}
+                    class="border p-1.5 rounded flex-1"
+                />
+                <input
+                    type="time"
+                    bind:value={startTime}
+                    class="border p-1.5 rounded flex-1"
+                />
+            </div>
+        </div>
+
+        <div class="flex flex-col space-y-2">
+            <label class="text-sm font-medium">Bitiş</label>
+            <div class="flex space-x-2">
+                <input
+                    type="date"
+                    bind:value={endDate}
+                    class="border p-1.5 rounded flex-1"
+                />
+                <input
+                    type="time"
+                    bind:value={endTime}
+                    class="border p-1.5 rounded flex-1"
+                />
+            </div>
+        </div>
+
         <button
             on:click={() => fetchNotificationsByDate(1)}
-            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1.5 px-6 rounded"
+            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1.5 px-6 rounded w-full"
         >
             Filtrele
         </button>
@@ -157,7 +184,9 @@
     <div
         class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
     >
-        <div class="bg-white rounded-lg w-3/4 h-3/4 overflow-auto relative">
+        <div
+            class="bg-white rounded-lg w-11/12 max-w-6xl h-3/4 overflow-auto relative"
+        >
             <!-- Navbar -->
             <div
                 class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"

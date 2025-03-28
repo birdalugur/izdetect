@@ -1,6 +1,4 @@
 <script>
-    import FilterNotifications from "./FilterNotifications.svelte";
-
     let notifications = [];
     let selectedImage = null;
     let selectedNotificationId = null;
@@ -94,7 +92,6 @@
 </script>
 
 <div class="flex justify-between items-center p-1.5 border rounded-md">
-    <FilterNotifications />
     <button
         class="text-red-600 hover:text-red-800"
         on:click={removeAllNotifications}
