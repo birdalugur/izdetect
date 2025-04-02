@@ -10,6 +10,11 @@
     let currentPage = 1;
     let pageSize = 12;
     let totalNotifications = 0;
+    let selectedLabels = {
+        human: false,
+        vehicle: false,
+        animal: false,
+    };
 
     const fetchNotificationsByDate = async (page = 1) => {
         if (!startDate || !endDate) {
@@ -17,13 +22,26 @@
             return;
         }
 
-        const startDateTime = startTime ? `${startDate}T${startTime}` : startDate;
+        const startDateTime = startTime
+            ? `${startDate}T${startTime}`
+            : startDate;
         const endDateTime = endTime ? `${endDate}T${endTime}` : endDate;
+
+        // Seçili label'ları API için hazırla
+        let labelsParam = "";
+        const selectedLabelIds = [];
+        if (selectedLabels.human) selectedLabelIds.push(1);
+        if (selectedLabels.vehicle) selectedLabelIds.push(2);
+        if (selectedLabels.animal) selectedLabelIds.push(3);
+
+        if (selectedLabelIds.length > 0) {
+            labelsParam = selectedLabelIds.join(",");
+        }
 
         try {
             const skip = (page - 1) * pageSize;
             const response = await fetch(
-                `http://localhost:8000/notifications_by_date?start_date=${startDateTime}&end_date=${endDateTime}&skip=${skip}&limit=${pageSize}`,
+                `http://localhost:8000/notifications_by_date?start_date=${startDateTime}&end_date=${endDateTime}&skip=${skip}&limit=${pageSize}&labels=${labelsParam}`,
             );
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -157,6 +175,7 @@
         </div>
 
         <div class="flex flex-col space-y-2">
+            <!-- svelte-ignore a11y-label-has-associated-control -->
             <label class="text-sm font-medium">Bitiş</label>
             <div class="flex space-x-2">
                 <input
@@ -169,6 +188,34 @@
                     bind:value={endTime}
                     class="border p-1.5 rounded flex-1"
                 />
+            </div>
+            <!-- svelte-ignore a11y-label-has-associated-control -->
+            <label class="text-sm font-medium">Filtrele (Etiketler)</label>
+            <div class="flex space-x-4">
+                <label class="inline-flex items-center">
+                    <input
+                        type="checkbox"
+                        bind:checked={selectedLabels.human}
+                        class="rounded border-gray-300"
+                    />
+                    <span class="ml-2">İnsan</span>
+                </label>
+                <label class="inline-flex items-center">
+                    <input
+                        type="checkbox"
+                        bind:checked={selectedLabels.vehicle}
+                        class="rounded border-gray-300"
+                    />
+                    <span class="ml-2">Araç</span>
+                </label>
+                <label class="inline-flex items-center">
+                    <input
+                        type="checkbox"
+                        bind:checked={selectedLabels.animal}
+                        class="rounded border-gray-300"
+                    />
+                    <span class="ml-2">Hayvan</span>
+                </label>
             </div>
         </div>
 
@@ -300,7 +347,7 @@
         >
             ←
         </button>
-        
+
         <div class="relative bg-white p-4 rounded-lg">
             <img
                 src={selectedImage}
@@ -308,7 +355,7 @@
                 class="max-w-full max-h-[80vh]"
             />
         </div>
-        
+
         <button
             class="absolute right-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0 text-2xl"
             on:click={showNextImage}
