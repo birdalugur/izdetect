@@ -1,0 +1,34 @@
+{
+    "time": {
+        "$gte": ISODate("2025-03-27T00:00:00.000Z"),
+        "$lte": ISODate("2025-04-29T23:59:59.999Z")
+    },
+
+$and: [
+        {
+            "labels.1": { $exists: true
+            }
+        },
+        {
+            "labels.2": { $exists: true
+            }
+        }
+    ],
+   
+labels: {
+  $not: {
+    $elemMatch: {
+      $and: [
+                    {
+                        "1": { $exists: false
+                        }
+                    },
+                    {
+                        "2": { $exists: false
+                        }
+                    }
+                ]
+            }
+        }
+    }
+}

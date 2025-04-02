@@ -2,6 +2,7 @@ import os
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from datetime import datetime
+from typing import List, Optional
 
 
 client = MongoClient("mongodb://localhost:27017/")
@@ -80,10 +81,6 @@ def get_statistics():
     return {"total_notifications": len(notifications), "object_stats": object_stats}
 
 
-from datetime import datetime
-from typing import List, Optional
-
-
 def get_notifications_by_date(
     start_date, end_date, skip=0, limit=12, label_list: Optional[List[str]] = None
 ):
@@ -92,7 +89,7 @@ def get_notifications_by_date(
     :param end_date: Bitiş tarihi (ISO formatinda string veya datetime objesi)
     :param skip: Kaç kayit atlanacak
     :param limit: Kaç kayit alinacak
-    :param label_list: Filtrelenecek label ID'leri listesi (string olarak, örn: ["1", "2"])
+    :param label_list: Filtrelenecek label ID'leri listesi (opsiyonel)
     :return: Belirtilen tarih araligindaki bildirimlerin listesi
     """
     if isinstance(start_date, str):
@@ -109,12 +106,14 @@ def get_notifications_by_date(
             {f"labels.{label}": {"$exists": True}} for label in label_list
         ]
 
-        # Başka label olmadığını kontrol et
+        # Başka label olmadığını kontrol et (string key olarak)
         not_other_labels_condition = {
             "labels": {
                 "$not": {
                     "$elemMatch": {
-                        "$and": [{label: {"$exists": False} for label in label_list}]
+                        "$and": [
+                            {str(label): {"$exists": False}} for label in label_list
+                        ]
                     }
                 }
             }
@@ -123,7 +122,7 @@ def get_notifications_by_date(
         query["$and"] = [*label_exists_conditions, not_other_labels_condition]
 
     notifications = list(notifications_collection.find(query).skip(skip).limit(limit))
-    print(notifications)
+
     for notification in notifications:
         notification["_id"] = str(notification["_id"])
         for key, value in notification.items():

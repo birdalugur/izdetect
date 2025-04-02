@@ -1,5 +1,5 @@
 import json
-import psutil 
+import psutil
 import cv2
 from fastapi import FastAPI, HTTPException, Path, Request
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
@@ -19,7 +19,7 @@ from db import (
     get_statistics,
     get_notifications_by_date,
     delete_notification,
-    delete_all
+    delete_all,
 )
 
 OUTPUT_FOLDER = os.path.abspath("data/")
@@ -82,11 +82,22 @@ async def get_notifications():
 
 
 @app.get("/notifications_by_date")
-async def get_notifications_by_date_endpoint(start_date: str, end_date: str, skip: int = 0, limit: int = 12):
+async def get_notifications_by_date_endpoint(
+    start_date: str,
+    end_date: str,
+    skip: int = 0,
+    limit: int = 12,
+    labels: str = None,  # Yeni eklenen parametre (örnek: "1,2")
+):
     try:
-        notifications = get_notifications_by_date(start_date, end_date, skip, limit)
+        # Eğer labels parametresi varsa, liste olarak ayarla
+        label_list = [int(label) for label in labels.split(",")] if labels else None
 
-        # `labels` alanini eşle
+        notifications = get_notifications_by_date(
+            start_date, end_date, skip, limit, label_list
+        )
+
+        # `labels` alanını eşle
         notifications = [
             map_labels(notification, selected_label_map)
             for notification in notifications
@@ -121,7 +132,7 @@ async def delete_notification_route(notification_id: str):
 @app.delete("/delete_notifications_by_date")
 async def delete_notifications_by_date(start_date: str, end_date: str):
     """Belirtilen tarih araliğindaki tüm bildirimleri siler."""
-    try:        
+    try:
         result = delete_all(start_date, end_date)
         return {"message": f"{result.deleted_count} bildirim silindi."}
     except Exception as e:
