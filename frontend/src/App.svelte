@@ -3,8 +3,7 @@
     import Notifications from "./components/Notifications.svelte";
     import LiveCamera from "./components/LiveCamera.svelte";
     import Ram from "./components/Ram.svelte";
-
-    
+    import FilterNotifications from "./components/FilterNotifications.svelte";
 
     let messages = [];
 
@@ -16,7 +15,8 @@
 <main class="flex h-[99vh] bg-gray-100">
     <div class="w-1/5 bg-white p-5 flex flex-col gap-5 overflow-y-auto">
         <Control {addMessage} />
-        <Ram />     
+        <Ram />
+        <FilterNotifications />
         <!-- <Messages {messages} /> -->
         <!-- <Timeline /> -->
     </div>

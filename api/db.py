@@ -2,6 +2,7 @@ import os
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from datetime import datetime
+from typing import List, Optional
 
 
 client = MongoClient("mongodb://localhost:27017/")
@@ -52,6 +53,17 @@ def delete_notification(notification_id: str):
     return
 
 
+def delete_all(start_date, end_date):
+    if isinstance(start_date, str):
+        start_date = datetime.fromisoformat(start_date)
+    if isinstance(end_date, str):
+        end_date = datetime.fromisoformat(end_date)
+    result = notifications_collection.delete_many(
+        {"time": {"$gte": start_date, "$lte": end_date}}
+    )
+    return result
+
+
 def clear_all_notifications():
     result = notifications_collection.update_many(
         {"status": "active"}, {"$set": {"status": "closed"}}
@@ -69,25 +81,52 @@ def get_statistics():
     return {"total_notifications": len(notifications), "object_stats": object_stats}
 
 
-def get_notifications_by_date(start_date, end_date):
+def get_notifications_by_date(
+    start_date, end_date, skip=0, limit=12, label_list: Optional[List[str]] = None
+):
     """
     :param start_date: Başlangiç tarihi (ISO formatinda string veya datetime objesi)
     :param end_date: Bitiş tarihi (ISO formatinda string veya datetime objesi)
-    :return: Belirtilen tarih araliğindaki bildirimlerin listesi
+    :param skip: Kaç kayit atlanacak
+    :param limit: Kaç kayit alinacak
+    :param label_list: Filtrelenecek label ID'leri listesi (opsiyonel)
+    :return: Belirtilen tarih araligindaki bildirimlerin listesi
     """
     if isinstance(start_date, str):
         start_date = datetime.fromisoformat(start_date)
     if isinstance(end_date, str):
         end_date = datetime.fromisoformat(end_date)
 
-    notifications = list(
-        notifications_collection.find({"time": {"$gte": start_date, "$lte": end_date}})
-    )
+    query = {"time": {"$gte": start_date, "$lte": end_date}}
+
+    # Eğer label filtresi varsa sorguya ekle
+    if label_list:
+        # Tüm label'ların var olduğunu kontrol et (string key olarak)
+        label_exists_conditions = [
+            {f"labels.{label}": {"$exists": True}} for label in label_list
+        ]
+
+        # Başka label olmadığını kontrol et (string key olarak)
+        not_other_labels_condition = {
+            "labels": {
+                "$not": {
+                    "$elemMatch": {
+                        "$and": [
+                            {str(label): {"$exists": False}} for label in label_list
+                        ]
+                    }
+                }
+            }
+        }
+
+        query["$and"] = [*label_exists_conditions, not_other_labels_condition]
+
+    notifications = list(notifications_collection.find(query).skip(skip).limit(limit))
 
     for notification in notifications:
-        notification["_id"] = str(notification["_id"])  # ObjectId'yi stringe çevir
+        notification["_id"] = str(notification["_id"])
         for key, value in notification.items():
-            if isinstance(value, datetime):  # Eğer datetime ise stringe çevir
+            if isinstance(value, datetime):
                 notification[key] = value.isoformat()
 
     return notifications
