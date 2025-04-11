@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+opencv-python-headless
+redis
+aioredis
+psutil
+# PyTorch with CUDA 12.6 support
+--extra-index-url https://download.pytorch.org/whl/cu126
+torch
+torchvision
+transformers
+pillow
+python-multipart
+pymongo
