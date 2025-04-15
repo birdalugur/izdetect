@@ -3,14 +3,25 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 from datetime import datetime
 from typing import List
-
+import os
 
 selected_label_map = {1: "insan", 2: "arac", 3: "hayvan"}
 
 
 def get_db():
-    client = MongoClient("mongodb://localhost:27017/")
-    return client["object_detection"], client
+    mongo_host = os.environ.get("MONGO_HOST", "localhost")
+    mongo_port = os.environ.get("MONGO_PORT", "27017")
+    mongo_user = os.environ.get("MONGO_USER", "")
+    mongo_pass = os.environ.get("MONGO_PASS", "")
+    mongo_db = os.environ.get("MONGO_DB", "object_detection")
+
+    if mongo_user and mongo_pass:
+        mongo_url = f"mongodb://{mongo_user}:{mongo_pass}@{mongo_host}:{mongo_port}/"
+    else:
+        mongo_url = f"mongodb://{mongo_host}:{mongo_port}/"
+
+    client = MongoClient(mongo_url)
+    return client[mongo_db], client
 
 
 class Record(BaseModel):
@@ -36,7 +47,20 @@ def add_notification(record: Record) -> str:
     return insert_data
 
 
+def test_mongodb_connection():
+    try:
+        db, client = get_db()
+        db.command("ping")
+        print("MongoDB bağlantisi başarili!")
+        client.close()
+        return True
+    except Exception as e:
+        print(f"MongoDB bağlanti hatasi: {e}")
+        return False
+
+
 if __name__ == "__main__":
+    test_mongodb_connection()
     # Örnek veri
     frame_count = 10
     formatted_labels = [{"person": 2}, {"car": 1}]
