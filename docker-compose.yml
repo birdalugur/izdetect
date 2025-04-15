@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - app_network
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    restart: unless-stopped
+    networks:
+      - app_network
+    # environment:
+    #   - MONGO_INITDB_ROOT_USERNAME=root
+    #   - MONGO_INITDB_ROOT_PASSWORD=example
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python3 api/app.py
+    volumes:
+      - ./data:/app/data
+      - ./cameras.json:/app/cameras.json
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+      - mongodb
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MONGO_URI=mongodb://root:example@mongodb:27017/
+    networks:
+      - app_network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+
+  services:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python3 services/main.py
+    volumes:
+      - ./data:/app/data
+      - ./cameras.json:/app/cameras.json
+    depends_on:
+      - redis
+      - mongodb
+      - api
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MONGO_HOST=mongodb
+    networks:
+      - app_network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+
+  frontend:
+    image: node:21.7.3
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "3000:3000"
+    command: >
+      bash -c "npm install && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      - api
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  mongodb-data:

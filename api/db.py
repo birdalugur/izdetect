@@ -5,7 +5,8 @@ from datetime import datetime
 from typing import List, Optional
 
 
-client = MongoClient("mongodb://localhost:27017/")
+MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
+client = MongoClient(MONGO_URI)
 OUTPUT_FOLDER = "data/"
 # client = MongoClient("mongodb:27017") # for docker
 db = client["object_detection"]

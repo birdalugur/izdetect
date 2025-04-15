@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.env
+env/
+venv/
+ENV/
+.vscode
+.git
+.gitignore
+.github
+.idea
+*.md
+!README.md
+data/
