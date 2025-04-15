@@ -350,6 +350,7 @@
                     <div
                         class="border p-4 rounded-lg cursor-pointer shadow hover:shadow-md transition-shadow"
                     >
+                        <!-- svelte-ignore a11y-click-events-have-key-events -->
                         <img
                             src={"http://localhost:8000/output/" +
                                 notification.image_url}

@@ -1,6 +1,6 @@
 [
     {
-        "id": "dockersahil",
-        "ip": "/app/api/sahil.mp4"
+        "id": "giris",
+        "ip": "rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10"
     }
 ]
