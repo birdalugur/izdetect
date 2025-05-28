@@ -17,6 +17,17 @@ from db import (
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
 
+
+
+@router.post("/{notification_id}/close")
+async def close_notification_route(
+    notification_id: str = Path(..., description="The ID of the notification to close"),
+):
+    if close_notification(notification_id) == 0:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    return {"message": "Notification closed successfully"}
+
+
 @router.get("/")
 async def get_notifications():
     notifications = get_active_notifications()
@@ -49,23 +60,9 @@ async def get_notifications_by_date_endpoint(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/{notification_id}/close")
-async def close_notification_route(
-    notification_id: int = Path(..., description="The ID of the notification to close"),
-):
-    if close_notification(notification_id) == 0:
-        raise HTTPException(status_code=404, detail="Notification not found")
-    return {"message": "Notification closed successfully"}
 
 
-# TODO: Both delete and options methods are processed.
-@router.delete("/{notification_id}")
-async def delete_notification_route(notification_id: str):
-    """Deletes a notification by ID."""
-    result = delete_notification(notification_id)
-    if result is not None:
-        return {"message": "Notification deleted successfully"}
-    raise HTTPException(status_code=404, detail="Notification not found")
+
 
 
 @router.delete("/by_date")
@@ -76,6 +73,17 @@ async def delete_notifications_by_date(start_date: str, end_date: str):
         return {"message": f"{result.deleted_count} notifications deleted"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+# TODO: Both delete and options methods are processed.
+@router.delete("/{notification_id}")
+async def delete_notification_route(notification_id: str):
+    """Deletes a notification by ID."""
+    result = delete_notification(notification_id)
+    if result is not None:
+        return {"message": "Notification deleted successfully"}
+    raise HTTPException(status_code=404, detail="Notification not found")
+
 
 
 @router.get("/statistics")

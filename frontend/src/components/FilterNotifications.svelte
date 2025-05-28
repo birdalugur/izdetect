@@ -128,7 +128,7 @@
         try {
             for (const notification of notifications) {
                 await fetch(
-                    `http://localhost:8000/notifications/by_date${notification._id}`,
+                    `http://localhost:8000/notifications/${notification._id}`,
                     {
                         method: "DELETE",
                     },
