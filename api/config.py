@@ -12,5 +12,7 @@ class Config:
     ALLOWED_ORIGINS: List[str] = ["http://localhost:8080", "http://localhost:3000"]
     LABEL_MAP: dict = {1: "insan", 2: "arac", 3: "hayvan"}
 
+    MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
+
 # Ensure output folder exists
 os.makedirs(Config.OUTPUT_FOLDER, exist_ok=True)

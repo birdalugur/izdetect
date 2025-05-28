@@ -19,7 +19,7 @@
 
         try {
             const response = await fetch(
-                "http://localhost:8000/start-detection",
+                "http://localhost:8000/cameras/start-detection",
                 {
                     method: "POST",
                     headers: {
@@ -55,7 +55,7 @@
 
         try {
             const response = await fetch(
-                "http://localhost:8000/stop-detection",
+                "http://localhost:8000/cameras/stop-detection",
                 {
                     method: "POST",
                 },
@@ -77,7 +77,7 @@
     const updateSettings = async () => {
         try {
             const response = await fetch(
-                "http://localhost:8000/update-settings",
+                "http://localhost:8000/system/update-settings",
                 {
                     method: "POST",
                     headers: {

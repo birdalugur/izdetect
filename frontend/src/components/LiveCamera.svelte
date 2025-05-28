@@ -6,7 +6,7 @@
     let cameraList = writable([]);
     let selectedCamera = writable(null);
     let showCameraForm = writable(false);
-    const defaultStreamUrl = "http://localhost:8000/video";
+    const defaultStreamUrl = "http://localhost:8000/cameras/video";
 
     let isFullscreen = false;
 
@@ -16,7 +16,7 @@
 
     const fetchCameras = async () => {
         try {
-            const response = await fetch("http://localhost:8000/get-cameras");
+            const response = await fetch("http://localhost:8000/cameras/get-cameras");
             if (response.ok) {
                 const cameras = await response.json();
                 cameraList.set(cameras);
@@ -53,7 +53,7 @@
         <img
             class="camera-view"
             src={$selectedCamera
-                ? `http://localhost:8000/video/${$selectedCamera.id}`
+                ? `http://localhost:8000/cameras/video/${$selectedCamera.id}`
                 : defaultStreamUrl}
             alt="IP Kamera Canli Yayini"
             on:click={toggleFullscreen}
@@ -62,7 +62,7 @@
             <div class="fullscreen-overlay" on:click={toggleFullscreen}>
                 <img
                     class="fullscreen-video"
-                    src={`http://localhost:8000/video/${$selectedCamera.id}`}
+                    src={`http://localhost:8000/cameras/video/${$selectedCamera.id}`}
                     alt="IP Kamera Tam Ekran"
                 />
                 <button class="close-btn" on:click={toggleFullscreen}>✕</button>

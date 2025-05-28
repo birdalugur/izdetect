@@ -7,7 +7,7 @@
 
     const fetchCameras = async () => {
         try {
-            const response = await fetch("http://localhost:8000/get-cameras");
+            const response = await fetch("http://localhost:8000/cameras/get-cameras");
             if (response.ok) {
                 const cameras = await response.json();
                 cameraList.set(
@@ -26,7 +26,7 @@
         if (camera.ip && camera.id) {
             cameraList.update((cameras) => [...cameras, { ...camera }]);
 
-            const response = await fetch("http://localhost:8000/set-cameras", {
+            const response = await fetch("http://localhost:8000/cameras/set-cameras", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(get(cameraList)),
@@ -53,7 +53,7 @@
                 return cameras;
             });
 
-            const response = await fetch("http://localhost:8000/set-cameras", {
+            const response = await fetch("http://localhost:8000/cameras/set-cameras", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(get(cameraList)),

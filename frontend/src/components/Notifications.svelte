@@ -36,7 +36,7 @@
     };
 
     const showImage = (imageUrl, id) => {
-        selectedImage = "http://localhost:8000/output/" + imageUrl;
+        selectedImage = "http://localhost:8000/cameras/output/" + imageUrl;
         selectedNotificationId = id;
     };
 
@@ -67,7 +67,7 @@
 
     // const notificationSound = new Audio("/sounds/notification.mp3");
     function setupEventSource() {
-        const eventSource = new EventSource("http://localhost:8000/events");
+        const eventSource = new EventSource("http://localhost:8000/cameras/events");
 
         eventSource.onmessage = (event) => {
             try {
@@ -132,7 +132,7 @@
                     {/each}
                 </div>
                 <img
-                    src={"http://localhost:8000/output/" +
+                    src={"http://localhost:8000/cameras/output/" +
                         notification.image_url}
                     alt="Thumbnail"
                     class="w-full rounded-md mt-2"

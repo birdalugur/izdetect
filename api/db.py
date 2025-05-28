@@ -3,12 +3,10 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 from datetime import datetime
 from typing import List, Optional
+from config import Config
 
 
-MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
-client = MongoClient(MONGO_URI)
-OUTPUT_FOLDER = "data/"
-# client = MongoClient("mongodb:27017") # for docker
+client = MongoClient(Config.MONGO_URI)
 db = client["object_detection"]
 notifications_collection = db["notifications"]
 
@@ -32,7 +30,7 @@ def close_notification(notification_id):
 
 def delete_image(image_filename):
     if image_filename:
-        image_path = os.path.join(OUTPUT_FOLDER, image_filename)
+        image_path = os.path.join(Config.OUTPUT_FOLDER, image_filename)
         print(image_path)
         if os.path.exists(image_path):
             print(True)

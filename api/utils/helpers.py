@@ -1,5 +1,5 @@
 # app/utils/helpers.py
-from typing import Dict, List
+from typing import Dict
 
 def map_labels(notification: Dict, label_map: Dict[int, str]) -> Dict:
     """

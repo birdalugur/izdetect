@@ -41,7 +41,7 @@
         try {
             const skip = (page - 1) * pageSize;
             const response = await fetch(
-                `http://localhost:8000/notifications_by_date?start_date=${startDateTime}&end_date=${endDateTime}&skip=${skip}&limit=${pageSize}&labels=${labelsParam}`,
+                `http://localhost:8000/notifications/by_date/?start_date=${startDateTime}&end_date=${endDateTime}&skip=${skip}&limit=${pageSize}&labels=${labelsParam}`,
             );
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -58,7 +58,7 @@
     };
 
     const showImage = (imageUrl, id) => {
-        selectedImage = "http://localhost:8000/output/" + imageUrl;
+        selectedImage = "http://localhost:8000/cameras/output/" + imageUrl;
         selectedNotificationId = id;
     };
 
@@ -89,7 +89,7 @@
 
     const deleteNotification = async (id) => {
         try {
-            await fetch(`http://localhost:8000/delete_notification/${id}`, {
+            await fetch(`http://localhost:8000/notifications/${id}`, {
                 method: "DELETE",
             });
             notifications = notifications.filter((n) => n._id !== id);
@@ -107,7 +107,7 @@
 
         try {
             const response = await fetch(
-                `http://localhost:8000/delete_notifications_by_date?start_date=${startDate}&end_date=${endDate}`,
+                `http://localhost:8000/notifications/by_date?start_date=${startDate}&end_date=${endDate}`,
                 {
                     method: "DELETE",
                 },
@@ -128,7 +128,7 @@
         try {
             for (const notification of notifications) {
                 await fetch(
-                    `http://localhost:8000/delete_notification/${notification._id}`,
+                    `http://localhost:8000/notifications/by_date${notification._id}`,
                     {
                         method: "DELETE",
                     },
@@ -352,7 +352,7 @@
                     >
                         <!-- svelte-ignore a11y-click-events-have-key-events -->
                         <img
-                            src={"http://localhost:8000/output/" +
+                            src={"http://localhost:8000/cameras/output/" +
                                 notification.image_url}
                             alt="Thumbnail"
                             class="w-full h-40 object-cover rounded-md mb-2 cursor-pointer"
