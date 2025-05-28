@@ -7,6 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 
+from config import Config
+from utils import map_labels
+from camera_service import CameraService, Camera
 
 import redis
 import aioredis
@@ -22,48 +25,25 @@ from db import (
     delete_all,
 )
 
-OUTPUT_FOLDER = os.path.abspath("data/")
-CAMERA_URL = "http://10.100.10.94/axis-cgi/mjpg/video.cgi?resolution=1280x800&fps=10"
-# RTSP_URL = "rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10"
-RTSP_URL = "/home/birdal/izdetect/sahil.mp4"
-
-os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 app = FastAPI()
 
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080", "http://localhost:3000"],
+    allow_origins=Config.ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,
 )
 
-# Redis bağlanti bilgileri
-REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))
-CHANNEL_NAME = "event_channel"
+
 redis_client = redis.StrictRedis(
-    host=REDIS_HOST, port=REDIS_PORT, decode_responses=True
+    host=Config.REDIS_HOST, port=Config.REDIS_PORT, decode_responses=True
 )
-
-selected_label_map = {1: "insan", 2: "arac", 3: "hayvan"}
-
-
-def map_labels(notification, label_map):
-    """Bildirimdeki `labels` alanini eşleyen yardimci fonksiyon."""
-    mapped_labels = []
-    for label_obj in notification.get("labels", []):
-        mapped_label = {label_map.get(int(k), k): v for k, v in label_obj.items()}
-        mapped_labels.append(mapped_label)
-    notification["labels"] = mapped_labels
-    return notification
 
 
 # Endpoints
-
-
 @app.get("/")
 async def index():
     return {"message": "Welcome to the Object Detector!"}
@@ -75,7 +55,7 @@ async def get_notifications():
 
     # `labels` alanini eşle
     notifications = [
-        map_labels(notification, selected_label_map) for notification in notifications
+        map_labels(notification, Config.LABEL_MAP) for notification in notifications
     ]
 
     return JSONResponse(notifications)
@@ -99,8 +79,7 @@ async def get_notifications_by_date_endpoint(
 
         # `labels` alanını eşle
         notifications = [
-            map_labels(notification, selected_label_map)
-            for notification in notifications
+            map_labels(notification, Config.LABEL_MAP) for notification in notifications
         ]
 
         return JSONResponse(notifications)
@@ -155,7 +134,7 @@ async def clear_all_notifications_route():
 async def get_image(
     filename: str = Path(..., description="The name of the file to retrieve"),
 ):
-    file_path = os.path.join(OUTPUT_FOLDER, filename)
+    file_path = os.path.join(Config.OUTPUT_FOLDER, filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(file_path)
@@ -201,12 +180,14 @@ async def stop_detection():
 async def get_events(request: Request):
     async def redis_event_generator():
         # Redis bağlantisini aç
-        redis = await aioredis.from_url(f"redis://{REDIS_HOST}:{REDIS_PORT}")
+        redis = await aioredis.from_url(
+            f"redis://{Config.REDIS_HOST}:{Config.REDIS_PORT}"
+        )
         pubsub = redis.pubsub()
 
         try:
             # Redis kanalini dinlemeye başla
-            await pubsub.subscribe(CHANNEL_NAME)
+            await pubsub.subscribe(Config.CHANNEL_NAME)
 
             while True:
                 # Eğer istemci bağlantiyi kapattiysa döngüden çik
@@ -218,12 +199,12 @@ async def get_events(request: Request):
                 )
                 if message:
                     message_data = json.loads(message["data"])
-                    message_data = map_labels(message_data, selected_label_map)
+                    message_data = map_labels(message_data, Config.LABEL_MAP)
                     yield f"data: {json.dumps(message_data)}\n\n"
                     # yield f"data: {message['data'].decode('utf-8')}\n\n"
         finally:
             # Kaynaklari temizle
-            await pubsub.unsubscribe(CHANNEL_NAME)
+            await pubsub.unsubscribe(Config.CHANNEL_NAME)
             await pubsub.close()
             await redis.close()
 
@@ -236,7 +217,7 @@ async def video_feed(camera_id: str):
     """Seçilen kameraya göre MJPEG akişi döndür."""
 
     try:
-        cameras = read_cameras()
+        cameras = CameraService.read_cameras()
 
         # Seçilen kameranin bilgilerini al
         selected_camera = next((cam for cam in cameras if cam["id"] == camera_id), None)
@@ -293,39 +274,15 @@ async def update_settings(settings: Settings):
         raise HTTPException(status_code=500, detail=f"Failed to update settings: {e}")
 
 
-class Camera(BaseModel):
-    id: str
-    ip: str
-
-
-camera_list = []
-
-
 @app.post("/set-cameras")
 async def set_cameras(cameras: list[Camera]):
-    global camera_list
-    camera_list = cameras
-
-    with open("cameras.json", "w") as f:
-        json.dump([cam.model_dump() for cam in camera_list], f, indent=4)
-
-    return {"message": "Kamera bilgileri kaydedildi!"}
-
-
-def read_cameras():
-    try:
-        with open("cameras.json", "r") as f:
-            cameras = json.load(f)
-        return cameras
-    except FileNotFoundError:
-        return []
+    CameraService.write_cameras(cameras)
+    return {"message": "Camera information saved successfully"}
 
 
 @app.get("/get-cameras")
 async def get_cameras():
-    global camera_list
-    cameras = read_cameras()
-    camera_list = cameras
+    cameras = CameraService.read_cameras()
     return cameras
 
 

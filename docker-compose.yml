@@ -30,8 +30,7 @@ services:
       dockerfile: Dockerfile
     command: python3 api/app.py
     volumes:
-      - ./data:/app/data
-      - ./cameras.json:/app/cameras.json
+      - ./:/app
     ports:
       - "8000:8000"
     depends_on:
