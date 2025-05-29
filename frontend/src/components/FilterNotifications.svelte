@@ -41,7 +41,7 @@
         try {
             const skip = (page - 1) * pageSize;
             const response = await fetch(
-                `http://localhost:8000/notifications/by_date/?start_date=${startDateTime}&end_date=${endDateTime}&skip=${skip}&limit=${pageSize}&labels=${labelsParam}`,
+                `http://localhost:8000/notifications/by_date?start_date=${startDateTime}&end_date=${endDateTime}&skip=${skip}&limit=${pageSize}&labels=${labelsParam}`,
             );
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);

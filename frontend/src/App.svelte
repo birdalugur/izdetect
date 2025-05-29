@@ -4,6 +4,7 @@
     import LiveCamera from "./components/LiveCamera.svelte";
     import Ram from "./components/Ram.svelte";
     import FilterNotifications from "./components/FilterNotifications.svelte";
+    import Table from "./components/Table.svelte";
 
     let messages = [];
 
@@ -22,7 +23,7 @@
     </div>
     <div class="w-2/5 p-2 bg-white">
         <LiveCamera />
-        <!-- <Calender /> -->
+        <Table />
     </div>
     <div class="w-2/5 p-5 bg-gray-50 overflow-y-auto flex flex-col gap-2.5">
         <Notifications />
