@@ -2,9 +2,5 @@
     {
         "id": "giris",
         "ip": "rtsp://deneme:155115@10.100.10.94:554/axis-media/media.amp?adjustablelivestream=1&fps=10"
-    },
-    {
-        "id": "sahil2",
-        "ip": "sahil2.mp4"
     }
 ]

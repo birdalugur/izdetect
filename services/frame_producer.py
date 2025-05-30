@@ -38,9 +38,9 @@ class FrameProducer(BaseClass):
                 break
 
         if not self.is_connected:
-            print(
-                f"Failed to connect to {self.video_source} after {max_retries} retries."
-            )
+            print(f"Failed to connect to {self.video_source} after {max_retries} retries.")
+            # Bağlantı kurulamadıysa bilgi gönder
+            self.redis_client.publish("task_control", "disconnected")
             return
 
         not_ret_count = 0
@@ -53,13 +53,12 @@ class FrameProducer(BaseClass):
                 if not_ret_count > 5:
                     print("Camera disconnected, switching to URL wait mode.")
                     self.stop_signal = True
+                    self.redis_client.publish("task_control", "disconnected")
                     break
                 else:
                     continue
 
-            image_bytes = ImageProcessor.encode_img(
-                frame, encoding_method=encoding_method
-            )
+            image_bytes = ImageProcessor.encode_img(frame, encoding_method=encoding_method)
             self.redis_client.lpush(self.output_queue, image_bytes)
             not_ret_count = 0
 

@@ -6,6 +6,7 @@ from tracking import DetectionProcessor
 from notify import NotifyProcessor
 from multiprocessing import Event
 import os
+import time
 
 REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))
@@ -76,6 +77,10 @@ def redis_listener():
             if command == "start":
                 start_tasks()
             elif command == "stop":
+                stop_tasks()
+            elif command == "disconnected":
+                print("Camera disconnected signal received. Restarting tasks after 8 seconds...")
+                time.sleep(8)
                 stop_tasks()
 
 
