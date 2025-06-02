@@ -1,9 +1,10 @@
 from pydantic import BaseModel, Field
 from pymongo import MongoClient
 from bson.objectid import ObjectId
-from datetime import datetime
+from datetime import datetime, timezone  # Add timezone import
 from typing import List
 import os
+from bson import SON
 
 selected_label_map = {1: "insan", 2: "arac", 3: "hayvan"}
 
@@ -45,6 +46,48 @@ def add_notification(record: Record) -> str:
     _ = notifications_collection.insert_one(insert_data)
     client.close()
     return insert_data
+
+
+def add_detection_session(camera_id: str) -> str:
+    """Insert a new detection session record with start timestamp."""
+    db, client = get_db()
+    detection_sessions_collection = db["detection_sessions"]
+
+    session_data = {
+        "camera_id": camera_id,
+        "start": datetime.now(timezone.utc).isoformat(),  # Fix: Use timezone.utc
+        "end": None,
+    }
+    result = detection_sessions_collection.insert_one(session_data)
+    client.close()
+    return str(result.inserted_id)
+
+
+
+def update_last_open_session(camera_id: str):
+    """End timestamp'i olmayan en son oturumu bitiş zamanı ile günceller."""
+    db, client = get_db()
+    detection_sessions_collection = db["detection_sessions"]
+
+    detection_sessions_collection.update_one(
+        {"camera_id": camera_id, "end": None},
+        {"$set": {"end": datetime.now(timezone.utc).isoformat()}},
+        sort=SON([("start", -1)])  # DÜZELTİLEN SATIR
+    )
+    client.close()
+
+
+
+def update_detection_session_end(session_id: str):
+    """Update the end timestamp of a detection session."""
+    db, client = get_db()
+    detection_sessions_collection = db["detection_sessions"]
+
+    detection_sessions_collection.update_one(
+        {"_id": ObjectId(session_id)},
+        {"$set": {"end": datetime.now(timezone.utc).isoformat()}}  # Fix: Use timezone.utc
+    )
+    client.close()
 
 
 def test_mongodb_connection():

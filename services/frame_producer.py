@@ -3,26 +3,51 @@ import redis
 import time
 from image_processor import ImageProcessor
 from base import BaseClass
+from db import add_detection_session, update_detection_session_end  # db.py'den fonksiyonları içe aktar
 
 
 class FrameProducer(BaseClass):
     def __init__(
-        self, video_source: str, output_queue: str, redis_client: redis.Redis = None
+        self, video_source: str, output_queue: str, camera_id: str, redis_client: redis.Redis = None
     ):
         self.video_source = video_source
         self.output_queue = output_queue
+        self.camera_id = camera_id  # Yeni: Kamera kimliği
         self.is_connected = False  # Kamera bağlantı durumu
         super().__init__(redis_client)
         self.stop_signal = False
+        self.session_id = None  # Yeni: MongoDB'deki session kaydını tutmak için
 
     def __repr__(self):
         return (
             f"FrameProducer(output_queue={self.output_queue}, "
             f"redis_client={self.redis_client}, "
-            f"video_source={self.video_source})"
+            f"video_source={self.video_source}, "
+            f"camera_id={self.camera_id})"
         )
+    
+    
+    def stop(self):
+        """Kamera bağlantısını kes ve işlemi durdur."""
+        self.stop_signal = True
+        self.is_connected = False
+        print(f"Stopping FrameProducer for camera {self.camera_id}...")
+        print("session_id:", self.session_id)
+
+        if self.session_id:
+            update_detection_session_end(self.session_id)
+            print(f"Detection session ended for {self.camera_id}, session_id: {self.session_id}")
+        else:
+            # Eğer process içinden atanmadıysa, camera_id ile son oturumu güncelle
+            from db import update_last_open_session
+            update_last_open_session(self.camera_id)
+            print(f"Detection session ended for {self.camera_id} (looked up by camera_id)")
 
     def run(self, encoding_method="binary"):
+        # Detect işlemi başladığında MongoDB'ye kayıt ekle
+        self.session_id = add_detection_session(self.camera_id)
+        print(f"Detection session started for {self.camera_id}, session_id: {self.session_id}")
+
         retry_count = 0
         max_retries = 5
 
@@ -39,8 +64,11 @@ class FrameProducer(BaseClass):
 
         if not self.is_connected:
             print(f"Failed to connect to {self.video_source} after {max_retries} retries.")
-            # Bağlantı kurulamadıysa bilgi gönder
+            # Bağlantı kurulamadıysa bilgi gönder ve session'ı kapat
             self.redis_client.publish("task_control", "disconnected")
+            if self.session_id:
+                update_detection_session_end(self.session_id)
+                print(f"Detection session ended for {self.camera_id}, session_id: {self.session_id}")
             return
 
         not_ret_count = 0
@@ -63,6 +91,10 @@ class FrameProducer(BaseClass):
             not_ret_count = 0
 
         cap.release()
+        # Detect işlemi sona erdiğinde MongoDB'deki kaydı güncelle
+        if self.session_id:
+            update_detection_session_end(self.session_id)
+            print(f"Detection session ended for {self.camera_id}, session_id: {self.session_id}")
         print("All frames processed. Waiting for a new camera URL...")
 
 

@@ -30,7 +30,10 @@ def start_tasks():
     running.set()
 
     for idx, url in enumerate(camera_urls, start=1):
-        frame_producer = FrameProducer(video_source=url, output_queue=f"camera{idx}")
+        camera_id = f"cam-{idx}"  # Kamera kimliği formatı: cam-1, cam-2, vb.
+        frame_producer = FrameProducer(
+            video_source=url, output_queue=f"camera{idx}", camera_id=camera_id
+        )
         inference = Inference(
             input_queue=f"camera{idx}",
             output_queue=f"inference{idx}",
@@ -74,6 +77,7 @@ def redis_listener():
     for message in pubsub.listen():
         if message["type"] == "message":
             command = message["data"].strip().lower()
+            print(f"Received command: {command}")
             if command == "start":
                 start_tasks()
             elif command == "stop":
