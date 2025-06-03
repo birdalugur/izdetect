@@ -9,6 +9,32 @@ from config import Config
 client = MongoClient(Config.MONGO_URI)
 db = client["object_detection"]
 notifications_collection = db["notifications"]
+detection_sessions_collection = db["detection_sessions"]
+
+
+def get_all_detection_sessions():
+    """
+    detection_sessions koleksiyonundaki tüm verileri getirir.
+    """
+    sessions = list(detection_sessions_collection.find().sort("start", -1))
+    for session in sessions:
+        session["_id"] = str(session["_id"])
+        for key in ["start", "end"]:
+            if key in session and isinstance(session[key], datetime):
+                session[key] = session[key].isoformat()
+    return sessions
+
+
+def get_active_sessions():
+    """
+    Henüz bitiş zamanı olmayan (devam eden) detection oturumlarını getirir.
+    """
+    sessions = list(detection_sessions_collection.find({"end": None}))
+    for session in sessions:
+        session["_id"] = str(session["_id"])
+        if isinstance(session["start"], datetime):
+            session["start"] = session["start"].isoformat()
+    return sessions
 
 
 def get_active_notifications():
@@ -132,7 +158,13 @@ def get_notifications_by_date(
 
 
 if __name__ == "__main__":
-    start = "2025-02-01T00:00:00"
-    end = "2025-02-26T23:59:59"
-    records = get_notifications_by_date(start, end)
-    print(records)
+    # start = "2025-02-01T00:00:00"
+    # end = "2025-02-26T23:59:59"
+    # records = get_notifications_by_date(start, end)
+    # print(records)
+
+    ds = get_all_detection_sessions()
+    print(ds)
+
+    das = get_active_sessions()
+    print(das)

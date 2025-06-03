@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 from config import Config
-from routes import system, cameras, notifications
+from routes import system, cameras, notifications, detection_sessions
 
 
 app = FastAPI()
@@ -21,6 +21,7 @@ app.add_middleware(
 app.include_router(system.router)
 app.include_router(cameras.router)
 app.include_router(notifications.router)
+app.include_router(detection_sessions.router)
 
 
 @app.get("/")
