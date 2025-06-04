@@ -1,39 +1,67 @@
+<!-- Table.svelte -->
 <script>
-    import { writable } from 'svelte/store';
+    import { writable } from "svelte/store";
+    import FilterNotifications from "./FilterNotifications.svelte";
 
-    // Mock data simulating MongoDB collection
-    const detectionRecords = writable([
-        {
-            _id: '1',
-            camera_id: 'cam-2',
-            start: '2024-05-29T14:30:00.000Z',
-            end: '2024-05-29T14:31:45.000Z'
-        },
-        {
-            _id: '2',
-            camera_id: 'cam-2',
-            start: '2024-05-29T15:00:00.000Z',
-            end: null
-        },
-        {
-            _id: '3',
-            camera_id: 'cam-1',
-            start: '2024-05-29T16:00:00.000Z',
-            end: '2024-05-29T16:02:30.000Z'
+    // Store to hold fetched detection records
+    const detectionRecords = writable([]);
+
+    // Function to fetch detection records from the backend
+    const fetchDetectionRecords = async () => {
+        try {
+            const response = await fetch(
+                "http://localhost:8000/detection-sessions",
+            );
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            const data = await response.json();
+            detectionRecords.set(data);
+        } catch (error) {
+            console.error("Error fetching detection records:", error);
         }
-    ]);
+    };
 
-    // Store to track which record's images are being viewed
-    let selectedRecord = writable(null);
+    // Call the fetch function when the component loads
+    fetchDetectionRecords();
+
+    // Variables for FilterNotifications integration
+    let showFilterModal = false;
+    let filterStartDate = "";
+    let filterEndDate = "";
+    let filterStartTime = "";
+    let filterEndTime = "";
+
+    // Function to format date to YYYY-MM-DD format
+    const formatDate = (isoString) => {
+        return new Date(isoString).toISOString().split('T')[0];
+    };
+
+    // Function to format time to HH:MM format
+    const formatTime = (isoString) => {
+        return new Date(isoString).toISOString().split('T')[1].slice(0, 5);
+    };
 
     // Function to handle opening images for a detection record
     const openImages = (record) => {
-        selectedRecord.set(record);
+        // Set the date and time values from the record
+        filterStartDate = formatDate(record.start);
+        filterEndDate = formatDate(record.end);
+        filterStartTime = formatTime(record.start);
+        filterEndTime = formatTime(record.end);
+        
+        // Show the FilterNotifications modal
+        showFilterModal = true;
     };
 
     // Function to close the image viewer
-    const closeImages = () => {
-        selectedRecord.set(null);
+    const closeFilterModal = () => {
+        showFilterModal = false;
+        // Reset values
+        filterStartDate = "";
+        filterEndDate = "";
+        filterStartTime = "";
+        filterEndTime = "";
     };
 </script>
 
@@ -53,14 +81,22 @@
                 {#each $detectionRecords as record}
                     <tr class="border-b hover:bg-gray-50">
                         <td class="px-4 py-2">{record.camera_id}</td>
-                        <td class="px-4 py-2">{new Date(record.start).toLocaleString()}</td>
-                        <td class="px-4 py-2">{record.end ? new Date(record.end).toLocaleString() : 'Ongoing'}</td>
+                        <td class="px-4 py-2">
+                            {new Date(record.start).toLocaleString()}
+                        </td>
+                        <td class="px-4 py-2">
+                            {record.end
+                                ? new Date(record.end).toLocaleString()
+                                : "Ongoing"}
+                        </td>
                         <td class="px-4 py-2">
                             <button
                                 on:click={() => openImages(record)}
                                 disabled={!record.start || !record.end}
                                 class="py-1 px-3 rounded-lg text-white font-semibold transition
-                                {record.start && record.end ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-400 cursor-not-allowed'}"
+                                {record.start && record.end
+                                    ? 'bg-blue-500 hover:bg-blue-600'
+                                    : 'bg-gray-400 cursor-not-allowed'}"
                             >
                                 Open
                             </button>
@@ -70,23 +106,18 @@
             </tbody>
         </table>
     </div>
-
-    {#if $selectedRecord}
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <div class="modal-overlay" on:click={closeImages}>
-            <div class="modal-content" on:click|stopPropagation>
-                <h3 class="text-lg font-bold mb-2">Images for { $selectedRecord.camera_id } ({ new Date($selectedRecord.start).toLocaleString() })</h3>
-                <p class="text-gray-600 mb-4">Placeholder for detection images (to be implemented with backend integration).</p>
-                <button
-                    on:click={closeImages}
-                    class="py-2 px-4 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg"
-                >
-                    Close
-                </button>
-            </div>
-        </div>
-    {/if}
 </div>
+
+{#if showFilterModal}
+    <FilterNotifications
+        bind:startDate={filterStartDate}
+        bind:endDate={filterEndDate}
+        bind:startTime={filterStartTime}
+        bind:endTime={filterEndTime}
+        autoOpen={true}
+        on:close={closeFilterModal}
+    />
+{/if}
 
 <style>
     .modal-overlay {

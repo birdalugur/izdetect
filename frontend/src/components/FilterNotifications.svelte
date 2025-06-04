@@ -1,8 +1,15 @@
+<!-- FilterNotifications.svelte -->
 <script>
-    let startDate = "";
-    let endDate = "";
-    let startTime = "";
-    let endTime = "";
+    import { createEventDispatcher } from 'svelte';
+    
+    const dispatch = createEventDispatcher(); //Modal kapatıldığında parent component'e haber verebilmek için
+
+    export let startDate = "";
+    export let endDate = "";
+    export let startTime = "";
+    export let endTime = "";
+    export let autoOpen = false;
+    
     let notifications = [];
     let showModal = false;
     let selectedImage = null;
@@ -16,9 +23,14 @@
         animal: false,
     };
 
+    // Watch for autoOpen prop changes
+    $: if (autoOpen && startDate && endDate) {
+        fetchNotificationsByDate(1);
+    }
+
     const fetchNotificationsByDate = async (page = 1) => {
         if (!startDate || !endDate) {
-            alert("Lütfen başlangiç ve bitiş tarihini seçin.");
+            alert("Lütfen başlangıç ve bitiş tarihini seçin.");
             return;
         }
 
@@ -52,8 +64,8 @@
             showModal = true;
             currentPage = page;
         } catch (error) {
-            console.error("Bildirimler alinamadi:", error);
-            alert("Bildirimler alinamadi.");
+            console.error("Bildirimler alınamadı:", error);
+            alert("Bildirimler alınamadı.");
         }
     };
 
@@ -65,6 +77,11 @@
     const closeImage = () => {
         selectedImage = null;
         selectedNotificationId = null;
+    };
+
+    const closeModal = () => {
+        showModal = false;
+        dispatch('close');
     };
 
     const showNextImage = () => {
@@ -101,7 +118,7 @@
 
     const deleteAllNotifications = async () => {
         if (!startDate || !endDate) {
-            alert("Lütfen başlangiç ve bitiş tarihini seçin.");
+            alert("Lütfen başlangıç ve bitiş tarihini seçin.");
             return;
         }
 
@@ -321,7 +338,7 @@
                         </button>
                         <button
                             class="bg-gray-500 hover:bg-gray-700 text-white py-1 px-2 rounded"
-                            on:click={() => (showModal = false)}
+                            on:click={closeModal}
                         >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
