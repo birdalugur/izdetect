@@ -3,10 +3,12 @@
     let selectedImage = null;
     let selectedNotificationId = null;
 
+    const MAX_NOTIFICATIONS = 48;
+
     const fetchNotifications = async () => {
         const response = await fetch("http://localhost:8000/notifications");
         const data = await response.json();
-        notifications = data;
+        notifications = data.slice(0, MAX_NOTIFICATIONS); 
     };
 
     fetchNotifications();
@@ -72,8 +74,9 @@
         eventSource.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                console.log("veri tipi", typeof data);
-                notifications = [data, ...notifications];
+
+                // Yeni bildirimi başa ekle, sonra gerekirse sonuncuyu sil
+                notifications = [data, ...notifications].slice(0, MAX_NOTIFICATIONS);
 
                 // notificationSound.play();
             } catch (e) {
@@ -90,6 +93,7 @@
 
     setupEventSource();
 </script>
+
 
 <div class="flex justify-between items-center p-1.5 border rounded-md">
     <button
