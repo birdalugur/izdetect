@@ -55,7 +55,7 @@ def add_detection_session(camera_id: str) -> str:
 
     session_data = {
         "camera_id": camera_id,
-        "start": datetime.now(timezone.utc).isoformat(),  # Fix: Use timezone.utc
+        "start": datetime.now().isoformat(), 
         "end": None,
     }
     result = detection_sessions_collection.insert_one(session_data)
@@ -71,7 +71,7 @@ def update_last_open_session(camera_id: str):
 
     detection_sessions_collection.update_one(
         {"camera_id": camera_id, "end": None},
-        {"$set": {"end": datetime.now(timezone.utc).isoformat()}},
+        {"$set": {"end": datetime.now().isoformat()}},
         sort=SON([("start", -1)])  # DÜZELTİLEN SATIR
     )
     client.close()
@@ -85,7 +85,7 @@ def update_detection_session_end(session_id: str):
 
     detection_sessions_collection.update_one(
         {"_id": ObjectId(session_id)},
-        {"$set": {"end": datetime.now(timezone.utc).isoformat()}}  # Fix: Use timezone.utc
+        {"$set": {"end": datetime.now().isoformat()}}
     )
     client.close()
 

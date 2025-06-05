@@ -4,3 +4,5 @@ issues.md
 frontend/src/components/Timeline.svelte
 p.md
 p.py
+frontend/node_modules/
+frontend/public/

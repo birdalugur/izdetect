@@ -66,7 +66,7 @@ class NotifyProcessor(BaseClass):
 
                     # Use frame count and timestamp for notifications
                     frame_count = count
-                    frame_time = datetime.timestamp(datetime.now())
+                    frame_time = datetime.now().isoformat()
 
                     record = Record(
                         frame_count=frame_count,
