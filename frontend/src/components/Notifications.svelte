@@ -8,7 +8,7 @@
     const fetchNotifications = async () => {
         const response = await fetch("http://localhost:8000/notifications");
         const data = await response.json();
-        notifications = data.slice(0, MAX_NOTIFICATIONS); 
+        notifications = data.reverse().slice(0, MAX_NOTIFICATIONS);
     };
 
     fetchNotifications();
