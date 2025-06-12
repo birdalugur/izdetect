@@ -2,7 +2,7 @@ import os
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from config import Config
 
 
@@ -12,9 +12,43 @@ notifications_collection = db["notifications"]
 detection_sessions_collection = db["detection_sessions"]
 
 
+def get_detection_sessions_with_pagination(skip: int = 0, limit: int = 10) -> Tuple[List[dict], int]:
+    """
+    Detection sessions koleksiyonundaki verileri sayfalama ile getirir.
+    
+    Args:
+        skip: Kaç kayıt atlanacak
+        limit: Kaç kayıt getirileceği
+    
+    Returns:
+        Tuple containing (sessions_list, total_count)
+    """
+    # Total count for pagination info
+    total_count = detection_sessions_collection.count_documents({})
+    
+    # Get paginated sessions, sorted by start time (newest first)
+    sessions = list(
+        detection_sessions_collection
+        .find()
+        .sort("start", -1)  # -1 for descending order (newest first)
+        .skip(skip)
+        .limit(limit)
+    )
+    
+    # Process the sessions
+    for session in sessions:
+        session["_id"] = str(session["_id"])
+        for key in ["start", "end"]:
+            if key in session and isinstance(session[key], datetime):
+                session[key] = session[key].isoformat()
+    
+    return sessions, total_count
+
+
 def get_all_detection_sessions():
     """
     detection_sessions koleksiyonundaki tüm verileri getirir.
+    Bu fonksiyon geriye dönük uyumluluk için korunmuştur.
     """
     sessions = list(detection_sessions_collection.find().sort("start", -1))
     for session in sessions:
