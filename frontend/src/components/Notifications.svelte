@@ -87,7 +87,7 @@
     setupEventSource();
 </script>
 
-<div class="flex justify-between items-center p-1.5 border rounded-md">
+<div class="flex justify-between items-center p-1.5 border rounded-md mt-4">
     <button
         class="text-red-600 hover:text-red-800"
         on:click={removeAllNotifications}
