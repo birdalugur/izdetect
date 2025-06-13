@@ -13,18 +13,6 @@
 
     fetchNotifications();
 
-    const removeNotification = async (id) => {
-        await fetch(`http://localhost:8000/notifications/${id}/close`, {
-            method: "POST",
-        });
-        notifications = notifications.filter(
-            (notification) => notification._id !== id,
-        );
-        if (id === selectedNotificationId) {
-            closeImage();
-        }
-    };
-
     const removeAllNotifications = async () => {
         const userConfirmed = window.confirm(
             "Tüm bildirimleri silmek istediğinizden emin misiniz?",
@@ -69,14 +57,19 @@
 
     // const notificationSound = new Audio("/sounds/notification.mp3");
     function setupEventSource() {
-        const eventSource = new EventSource("http://localhost:8000/cameras/events");
+        const eventSource = new EventSource(
+            "http://localhost:8000/cameras/events",
+        );
 
         eventSource.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
 
                 // Yeni bildirimi başa ekle, sonra gerekirse sonuncuyu sil
-                notifications = [data, ...notifications].slice(0, MAX_NOTIFICATIONS);
+                notifications = [data, ...notifications].slice(
+                    0,
+                    MAX_NOTIFICATIONS,
+                );
 
                 // notificationSound.play();
             } catch (e) {
@@ -93,7 +86,6 @@
 
     setupEventSource();
 </script>
-
 
 <div class="flex justify-between items-center p-1.5 border rounded-md">
     <button
@@ -152,11 +144,11 @@
 {#if selectedImage}
     <div class="fixed inset-0 flex items-center justify-center bg-white z-50">
         <button
-                class="absolute top-4 right-4 z-50 bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center text-gray-700 hover:text-gray-900"
-                on:click={closeImage}
-            >
+            class="absolute top-4 right-4 z-50 bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center text-gray-700 hover:text-gray-900"
+            on:click={closeImage}
+        >
             <span class="text-xl">&times;</span>
-            </button>
+        </button>
         <button
             class="absolute left-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0"
             on:click={showPreviousImage}
@@ -182,14 +174,5 @@
                 →
             </span>
         </button>
-        <div class="absolute bottom-5 flex gap-4">
-            
-            <button
-                class="bg-red-500 text-white px-4 py-2 rounded-md"
-                on:click={() => removeNotification(selectedNotificationId)}
-            >
-                Remove Notification
-            </button>
-        </div>
     </div>
 {/if}
