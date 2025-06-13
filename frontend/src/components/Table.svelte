@@ -64,7 +64,7 @@
     const prevPage = () => goToPage(currentPage - 1);
 </script>
 
-<div class="relative max-h-[70vh] flex flex-col bg-gray-100 p-4 rounded-lg shadow-lg mx-auto mt-4 w-full md:max-w-4xl sm:mx-4">
+<div class="relative max-h-[70vh] flex flex-col bg-gray-100 p-4 rounded-lg shadow-lg mt-4 w-full">
     <h2 class="text-xl font-bold text-gray-800 mb-3">Detection History</h2>
 
     <div class="mb-3 flex justify-end items-center text-sm text-gray-600">
