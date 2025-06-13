@@ -45,12 +45,18 @@
     onMount(fetchCameras);
 </script>
 
-<div class="bg-gray-100 p-2 rounded-lg shadow-lg mx-auto mt-2">
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <div class="relative w-full max-w-3xl border-2 border-gray-300 rounded-lg overflow-hidden text-center m-px z-[1]">
-        <h4 class="m-1 bg-blue-100 rounded px-2 py-1 text-sm font-semibold">Cam - 2</h4>
+<div class="bg-gradient-to-b bg-gray-100 p-1 rounded-2xl shadow-xl mx-auto mt-2 max-w-4xl border border-gray-300 relative overflow-hidden">
+    <!-- Üst gradient gölge efekti -->
+    <div class="absolute top-0 left-0 w-full h-4 bg-gradient-to-b from-gray-300 via-transparent to-transparent rounded-t-2xl shadow-inner z-0"></div>
+
+    <!-- Video Görüntüsü -->
+    <div class="relative border border-gray-300 rounded-xl overflow-hidden z-10">
+        <h4 class="absolute top-2 left-2 bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-md shadow-sm z-10">
+            {$selectedCamera?.name || 'Cam - 2'}
+        </h4>
+
         <img
-            class="w-full max-w-5xl rounded-lg mx-auto cursor-pointer"
+            class="w-full h-auto aspect-video object-cover cursor-pointer transition-transform duration-200 hover:scale-[1.01]"
             src={$selectedCamera
                 ? `http://localhost:8000/cameras/video/${$selectedCamera.id}`
                 : defaultStreamUrl}
@@ -59,14 +65,14 @@
         />
 
         {#if isFullscreen}
-            <div class="fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center z-[100]" on:click={toggleFullscreen}>
+            <div class="fixed inset-0 bg-black bg-opacity-90 flex justify-center items-center z-[100]" on:click={toggleFullscreen}>
                 <img
-                    class="max-w-[90%] max-h-[90%] rounded-lg"
+                    class="max-w-[90%] max-h-[90%] rounded-xl shadow-xl"
                     src={`http://localhost:8000/cameras/video/${$selectedCamera.id}`}
                     alt="IP Kamera Tam Ekran"
                 />
                 <button
-                    class="absolute top-5 right-5 bg-white/80 hover:bg-white text-black rounded-full px-3 py-2 text-lg font-bold transition-all duration-300"
+                    class="absolute top-6 right-6 bg-white/80 hover:bg-white text-black rounded-full px-3 py-1.5 text-lg font-bold shadow-md transition-all duration-300"
                     on:click={toggleFullscreen}
                 >
                     ✕
@@ -75,32 +81,34 @@
         {/if}
     </div>
 
-    <div class="flex justify-center gap-2 mt-3 flex-wrap">
+    <!-- Kamera seçim butonları -->
+    <div class="flex flex-wrap justify-center gap-2 mt-4">
         {#each $cameraList as cam}
             <button
-                class={`px-4 py-2 border-2 rounded-lg transition-all duration-300 font-medium shadow-md 
+                class={`px-3 py-1.5 text-xs rounded-full font-medium border transition-all duration-300 shadow 
                 ${$selectedCamera?.id === cam.id
-                    ? 'bg-blue-500 text-white border-blue-700 transform -translate-y-0.5'
-                    : 'bg-gray-100 text-blue-600 border-blue-500 hover:bg-blue-500 hover:text-white hover:border-blue-700 hover:-translate-y-0.5'}
-                focus:outline-none focus:ring-2 focus:ring-blue-400`}
+                    ? 'bg-blue-600 text-white border-blue-700 scale-105'
+                    : 'bg-gray-100 text-blue-600 border-blue-400 hover:bg-blue-500 hover:text-white hover:border-blue-700 hover:scale-105'}
+                focus:outline-none focus:ring-1 focus:ring-blue-400`}
                 on:click={() => selectCamera(cam)}
             >
-                {cam.id}
+                {cam.name || `Kamera ${cam.id}`}
             </button>
         {/each}
 
+        <!-- Kamera Yönetimi Butonu -->
         <button
-            class="ml-auto px-4 py-2 border-2 border-blue-500 bg-gray-100 text-blue-600 rounded-lg font-medium shadow-md hover:bg-blue-500 hover:text-white transition-all duration-300"
+            class="px-3 py-1.5 text-xs border border-blue-500 bg-white text-blue-600 rounded-full font-medium shadow hover:bg-blue-500 hover:text-white transition-all duration-300"
             on:click={toggleCameraForm}
         >
             Kamera Yönetimi
         </button>
     </div>
 
+    <!-- Modal -->
     {#if $showCameraForm}
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <div class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[100]" on:click={closeCameraForm}>
-            <div class="bg-white p-5 rounded-lg w-[400px] max-w-[90%] shadow-lg" on:click|stopPropagation>
+        <div class="modal-overlay fixed inset-0 bg-black/50 flex justify-center items-center z-[100]" on:click={closeCameraForm}>
+            <div class="bg-white p-5 rounded-2xl w-[400px] max-w-[90%] shadow-2xl border border-gray-200" on:click|stopPropagation>
                 <CamForm />
             </div>
         </div>
