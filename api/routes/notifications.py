@@ -1,22 +1,25 @@
 # app/routes/notifications.py
 from fastapi import APIRouter, HTTPException, Path
 from fastapi.responses import JSONResponse
-from typing import Optional
+from typing import Optional, List
+from pydantic import BaseModel
 from utils.helpers import map_labels
 from config import Config
 from db import (
     get_active_notifications,
     close_notification,
     clear_all_notifications,
-    get_statistics,
     get_notifications_by_date,
     delete_notification,
     delete_all,
+    delete_notifications_by_ids,
 )
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
 
+class BatchDeleteRequest(BaseModel):
+    notification_ids: List[str]
 
 
 @router.post("/{notification_id}/close")
@@ -60,11 +63,6 @@ async def get_notifications_by_date_endpoint(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-
-
-
-
-
 @router.delete("/by_date")
 async def delete_notifications_by_date(start_date: str, end_date: str):
     """Deletes all notifications within the specified date range."""
@@ -73,9 +71,18 @@ async def delete_notifications_by_date(start_date: str, end_date: str):
         return {"message": f"{result.deleted_count} notifications deleted"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
 
-# TODO: Both delete and options methods are processed.
+
+@router.delete("/batch_delete")
+async def delete_notifications_batch(request: BatchDeleteRequest):
+    """Deletes notifications by a list of IDs."""
+    try:
+        result = delete_notifications_by_ids(request.notification_ids)
+        return {"message": f"{result.deleted_count} notifications deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.delete("/{notification_id}")
 async def delete_notification_route(notification_id: str):
     """Deletes a notification by ID."""
@@ -83,13 +90,6 @@ async def delete_notification_route(notification_id: str):
     if result is not None:
         return {"message": "Notification deleted successfully"}
     raise HTTPException(status_code=404, detail="Notification not found")
-
-
-
-@router.get("/statistics")
-async def get_statistics_route():
-    stats = get_statistics()
-    return JSONResponse(content=stats, status_code=200)
 
 
 @router.post("/clear-all")

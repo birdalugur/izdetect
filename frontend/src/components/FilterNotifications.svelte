@@ -3,7 +3,7 @@
     import { createEventDispatcher } from "svelte";
     import NotificationModal from "./NotificationModal.svelte";
 
-    const dispatch = createEventDispatcher(); //Modal kapatıldığında parent component'e haber verebilmek için
+    const dispatch = createEventDispatcher();
 
     export let startDate = "";
     export let endDate = "";
@@ -24,7 +24,6 @@
         animal: false,
     };
 
-    // Watch for autoOpen prop changes
     $: if (autoOpen && startDate && endDate) {
         fetchNotificationsByDate(1);
     }
@@ -40,7 +39,6 @@
             : startDate;
         const endDateTime = endTime ? `${endDate}T${endTime}` : endDate;
 
-        // Seçili label'ları API için hazırla
         let labelsParam = "";
         const selectedLabelIds = [];
         if (selectedLabels.human) selectedLabelIds.push(1);
@@ -108,24 +106,36 @@
     };
 
     const deleteCurrentPageNotifications = async () => {
+        if (notifications.length === 0) {
+            alert("Silinecek bildirim yok.");
+            return;
+        }
+
+        const notificationIds = notifications.map((n) => n._id);
+
         try {
-            for (const notification of notifications) {
-                await fetch(
-                    `http://localhost:8000/notifications/${notification._id}`,
-                    {
-                        method: "DELETE",
+            const response = await fetch(
+                `http://localhost:8000/notifications/batch_delete`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json",
                     },
-                );
+                    body: JSON.stringify({ notification_ids: notificationIds }),
+                },
+            );
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
+            const result = await response.json();
             notifications = [];
-            alert("Sayfadaki bildirimler silindi.");
+            alert(result.message);
         } catch (error) {
             console.error("Bildirimler silinemedi:", error);
             alert("Bildirimler silinemedi.");
         }
     };
 
-    // Modal event handlers
     const handleModalClose = () => {
         showModal = false;
         dispatch("close");
