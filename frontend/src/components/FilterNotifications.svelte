@@ -86,9 +86,15 @@
             return;
         }
 
+        // Combine date and time for start and end
+        const startDateTime = startTime
+            ? `${startDate}T${startTime}`
+            : startDate;
+        const endDateTime = endTime ? `${endDate}T${endTime}` : endDate;
+
         try {
             const response = await fetch(
-                `http://localhost:8000/notifications/by_date?start_date=${startDate}&end_date=${endDate}`,
+                `http://localhost:8000/notifications/by_date?start_date=${startDateTime}&end_date=${endDateTime}`,
                 {
                     method: "DELETE",
                 },

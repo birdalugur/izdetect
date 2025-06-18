@@ -1,55 +1,307 @@
-Aşağıda verilen svelte kodunu düzenlemeniz gerekmektedir.
+Tümünü sil butonuna basıldığı zaman yalnızca tarih bilgisi sunucaya istek olarak atılıyor:
 
-Aşağıdaki kod, bir bildirim yönetim sistemi oluşturuyor. Bildirimleri bir kart şeklinde gösteriyor. Üzerine tıklanınca ilgili resim açılıyor. 
-Yerel sunucudan bildirimler çekiliyor ve notifications dizisine kaydediyor. Yeni bir bildirim geldiğinde notifications dizisinin başına ekleniyor. 
+http://localhost:8000/notifications/by_date?start_date=2025-06-18&end_date=2025-06-18
 
-Sonsuz sayıda bildirim gelebilir. Bu durumda bildirimler browserda birikecek ve bu kod verimsiz çalışacaktır. 
-
+bazen saat bilgisi de seçilebilir. bunu düzelt.
+filter.svelte:
 <script>
+    import { createEventDispatcher } from "svelte";
+    import NotificationModal from "./NotificationModal.svelte";
+
+    const dispatch = createEventDispatcher();
+
+    export let startDate = "";
+    export let endDate = "";
+    export let startTime = "";
+    export let endTime = "";
+    export let autoOpen = false;
+
     let notifications = [];
+    let showModal = false;
     let selectedImage = null;
     let selectedNotificationId = null;
-
-    const fetchNotifications = async () => {
-        const response = await fetch("http://localhost:8000/notifications");
-        const data = await response.json();
-        notifications = data;
+    let currentPage = 1;
+    let pageSize = 12;
+    let totalNotifications = 0;
+    let selectedLabels = {
+        human: false,
+        vehicle: false,
+        animal: false,
     };
 
-    fetchNotifications();
+    $: if (autoOpen && startDate && endDate) {
+        fetchNotificationsByDate(1);
+    }
 
-    const removeNotification = async (id) => {
-        await fetch(`http://localhost:8000/notifications/${id}/close`, {
-            method: "POST",
-        });
-        notifications = notifications.filter(
-            (notification) => notification._id !== id,
-        );
-        if (id === selectedNotificationId) {
-            closeImage();
+    const fetchNotificationsByDate = async (page = 1) => {
+        if (!startDate || !endDate) {
+            alert("Lütfen başlangıç ve bitiş tarihini seçin.");
+            return;
+        }
+
+        const startDateTime = startTime
+            ? `${startDate}T${startTime}`
+            : startDate;
+        const endDateTime = endTime ? `${endDate}T${endTime}` : endDate;
+
+        let labelsParam = "";
+        const selectedLabelIds = [];
+        if (selectedLabels.human) selectedLabelIds.push(1);
+        if (selectedLabels.vehicle) selectedLabelIds.push(2);
+        if (selectedLabels.animal) selectedLabelIds.push(3);
+
+        if (selectedLabelIds.length > 0) {
+            labelsParam = selectedLabelIds.join(",");
+        }
+
+        try {
+            const skip = (page - 1) * pageSize;
+            const response = await fetch(
+                `http://localhost:8000/notifications/by_date?start_date=${startDateTime}&end_date=${endDateTime}&skip=${skip}&limit=${pageSize}&labels=${labelsParam}`,
+            );
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            notifications = data;
+            totalNotifications = data.length;
+            showModal = true;
+            currentPage = page;
+        } catch (error) {
+            console.error("Bildirimler alınamadı:", error);
+            alert("Bildirimler alınamadı.");
         }
     };
 
-    const removeAllNotifications = async () => {
-        const userConfirmed = window.confirm(
-            "Tüm bildirimleri silmek istediğinizden emin misiniz?",
-        );
-        if (userConfirmed) {
-            await fetch("http://localhost:8000/notifications/clear-all", {
-                method: "POST",
+    const deleteNotification = async (id) => {
+        try {
+            await fetch(`http://localhost:8000/notifications/${id}`, {
+                method: "DELETE",
             });
-            notifications = [];
+            notifications = notifications.filter((n) => n._id !== id);
+        } catch (error) {
+            console.error("Bildirim silinemedi:", error);
+            alert("Bildirim silinemedi.");
         }
+    };
+
+    const deleteAllNotifications = async () => {
+        if (!startDate || !endDate) {
+            alert("Lütfen başlangıç ve bitiş tarihini seçin.");
+            return;
+        }
+
+        try {
+            const response = await fetch(
+                `http://localhost:8000/notifications/by_date?start_date=${startDate}&end_date=${endDate}`,
+                {
+                    method: "DELETE",
+                },
+            );
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const result = await response.json();
+            alert(result.message);
+            notifications = [];
+        } catch (error) {
+            console.error("Bildirimler silinemedi:", error);
+            alert("Bildirimler silinemedi.");
+        }
+    };
+
+    const deleteCurrentPageNotifications = async () => {
+        if (notifications.length === 0) {
+            alert("Silinecek bildirim yok.");
+            return;
+        }
+
+        const notificationIds = notifications.map((n) => n._id);
+
+        try {
+            const response = await fetch(
+                `http://localhost:8000/notifications/batch_delete`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ notification_ids: notificationIds }),
+                },
+            );
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const result = await response.json();
+            notifications = [];
+            alert(result.message);
+        } catch (error) {
+            console.error("Bildirimler silinemedi:", error);
+            alert("Bildirimler silinemedi.");
+        }
+    };
+
+    const handleModalClose = () => {
+        showModal = false;
+        dispatch("close");
+    };
+
+    const handleNextPage = () => {
+        if (notifications.length === pageSize) {
+            fetchNotificationsByDate(currentPage + 1);
+        }
+    };
+
+    const handlePreviousPage = () => {
+        if (currentPage > 1) {
+            fetchNotificationsByDate(currentPage - 1);
+        }
+    };
+
+    const handleImageSelect = (event) => {
+        const { imageUrl, id } = event.detail;
+        selectedImage = imageUrl;
+        selectedNotificationId = id;
+    };
+
+    const handleImageClose = () => {
+        selectedImage = null;
+        selectedNotificationId = null;
+    };
+
+    const handleDeleteNotification = (event) => {
+        const id = event.detail;
+        deleteNotification(id);
+    };
+
+    const handleDeleteCurrentPage = () => {
+        deleteCurrentPageNotifications();
+    };
+
+    const handleDeleteAll = () => {
+        deleteAllNotifications();
+    };
+</script>
+
+<div class="w-full max-w-full">
+    <div class="flex flex-col space-y-2">
+        <div class="flex flex-col space-y-2">
+            <!-- svelte-ignore a11y-label-has-associated-control -->
+            <label class="text-sm font-medium">Başlangıç</label>
+            <div class="flex space-x-2">
+                <input
+                    type="date"
+                    bind:value={startDate}
+                    class="border p-1.5 rounded flex-1"
+                />
+                <input
+                    type="time"
+                    bind:value={startTime}
+                    class="border p-1.5 rounded flex-1"
+                />
+            </div>
+        </div>
+
+        <div class="flex flex-col space-y-2">
+            <!-- svelte-ignore a11y-label-has-associated-control -->
+            <label class="text-sm font-medium">Bitiş</label>
+            <div class="flex space-x-2">
+                <input
+                    type="date"
+                    bind:value={endDate}
+                    class="border p-1.5 rounded flex-1"
+                />
+                <input
+                    type="time"
+                    bind:value={endTime}
+                    class="border p-1.5 rounded flex-1"
+                />
+            </div>
+            <!-- svelte-ignore a11y-label-has-associated-control -->
+            <label class="text-sm font-medium">Filtrele (Etiketler)</label>
+            <div class="flex space-x-4">
+                <label class="inline-flex items-center">
+                    <input
+                        type="checkbox"
+                        bind:checked={selectedLabels.human}
+                        class="rounded border-gray-300"
+                    />
+                    <span class="ml-2">İnsan</span>
+                </label>
+                <label class="inline-flex items-center">
+                    <input
+                        type="checkbox"
+                        bind:checked={selectedLabels.vehicle}
+                        class="rounded border-gray-300"
+                    />
+                    <span class="ml-2">Araç</span>
+                </label>
+                <label class="inline-flex items-center">
+                    <input
+                        type="checkbox"
+                        bind:checked={selectedLabels.animal}
+                        class="rounded border-gray-300"
+                    />
+                    <span class="ml-2">Hayvan</span>
+                </label>
+            </div>
+        </div>
+
+        <button
+            on:click={() => fetchNotificationsByDate(1)}
+            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1.5 px-6 rounded w-full"
+        >
+            Filtrele
+        </button>
+    </div>
+</div>
+
+{#if showModal}
+    <NotificationModal
+        {notifications}
+        {currentPage}
+        {pageSize}
+        {selectedImage}
+        {selectedNotificationId}
+        on:close={handleModalClose}
+        on:nextPage={handleNextPage}
+        on:previousPage={handlePreviousPage}
+        on:imageSelect={handleImageSelect}
+        on:imageClose={handleImageClose}
+        on:deleteNotification={handleDeleteNotification}
+        on:deleteCurrentPage={handleDeleteCurrentPage}
+        on:deleteAll={handleDeleteAll}
+    />
+{/if}
+
+modal.svelte:
+<!-- NotificationModal.svelte -->
+<script>
+    import { createEventDispatcher } from "svelte";
+    import NotificationCard from "./NotificationCard.svelte";
+
+    const dispatch = createEventDispatcher();
+
+    export let notifications = [];
+    export let currentPage = 1;
+    export let pageSize = 12;
+    export let selectedImage = null;
+    export let selectedNotificationId = null;
+
+    const closeModal = () => {
+        dispatch("close");
     };
 
     const showImage = (imageUrl, id) => {
         selectedImage = "http://localhost:8000/cameras/output/" + imageUrl;
         selectedNotificationId = id;
+        dispatch("imageSelect", { imageUrl: selectedImage, id });
     };
 
     const closeImage = () => {
         selectedImage = null;
         selectedNotificationId = null;
+        dispatch("imageClose");
     };
 
     const showNextImage = () => {
@@ -72,127 +324,191 @@ Sonsuz sayıda bildirim gelebilir. Bu durumda bildirimler browserda birikecek ve
         }
     };
 
-    // const notificationSound = new Audio("/sounds/notification.mp3");
-    function setupEventSource() {
-        const eventSource = new EventSource("http://localhost:8000/cameras/events");
+    const nextPage = () => {
+        if (notifications.length === pageSize) {
+            dispatch("nextPage");
+        }
+    };
 
-        eventSource.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                console.log("veri tipi", typeof data);
-                notifications = [data, ...notifications];
+    const previousPage = () => {
+        if (currentPage > 1) {
+            dispatch("previousPage");
+        }
+    };
 
-                // notificationSound.play();
-            } catch (e) {
-                console.error("Hata: Gelen veri JSON formatında değil!", e);
-            }
-        };
+    const deleteCurrentPageNotifications = () => {
+        dispatch("deleteCurrentPage");
+    };
 
-        eventSource.onerror = (err) => {
-            console.error("SSE bağlantı hatası!", err);
-            eventSource.close();
-            setTimeout(setupEventSource, 3000);
-        };
-    }
+    const deleteAllNotifications = () => {
+        dispatch("deleteAll");
+    };
 
-    setupEventSource();
+    const handleImageClick = (event) => {
+        const { imageUrl, id } = event.detail;
+        showImage(imageUrl, id);
+    };
+
+    const handleNotificationDelete = (event) => {
+        const id = event.detail;
+        dispatch("deleteNotification", id);
+    };
 </script>
 
-<div class="flex justify-between items-center p-1.5 border rounded-md">
-    <button
-        class="text-red-600 hover:text-red-800"
-        on:click={removeAllNotifications}
-        title="Clear All Notifications"
-    >
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 448 512"
-            class="w-6 h-6"
-        >
-            <path
-                d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.7 23.7 0 0 0 -21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0 -16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"
-            />
-        </svg>
-    </button>
-</div>
-
-<div class="mt-2 text-center overflow-y-auto">
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {#each notifications as notification}
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <div
-                class="bg-gray-100 p-4 rounded-md shadow hover:scale-105 transition cursor-pointer"
-                on:click={() =>
-                    showImage(notification.image_url, notification._id)}
-            >
-                <div class="flex flex-wrap gap-2">
-                    {#each notification.labels as label}
-                        {#each Object.entries(label) as [key, value]}
-                            <div
-                                class="bg-blue-100 border border-blue-300 rounded-md px-2 py-1 text-sm"
-                            >
-                                <span class="text-blue-600 font-semibold"
-                                    >{key}</span
-                                >: {value}
-                            </div>
-                        {/each}
-                    {/each}
+<!-- Modal -->
+<div class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg w-11/12 max-w-6xl h-3/4 overflow-auto relative flex flex-col">
+        <!-- Navigation Bar -->
+        <div class="sticky top-0 bg-gray-100 shadow-sm z-10">
+            <div class="flex items-center justify-between py-2 px-3">
+                <div class="flex items-center space-x-1 text-sm">
+                    <button
+                        class="bg-blue-500 hover:bg-blue-700 text-white py-1 px-2 rounded-l flex items-center"
+                        on:click={previousPage}
+                        disabled={currentPage === 1}
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-4 w-4"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                        >
+                            <path
+                                fill-rule="evenodd"
+                                d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                                clip-rule="evenodd"
+                            />
+                        </svg>
+                        <span class="ml-1">Önceki</span>
+                    </button>
+                    <span class="bg-gray-200 px-2 py-1 rounded text-xs">
+                        Sayfa {currentPage}
+                    </span>
+                    <button
+                        class="bg-blue-500 hover:bg-blue-700 text-white py-1 px-2 rounded-r flex items-center"
+                        on:click={nextPage}
+                        disabled={notifications.length < pageSize}
+                    >
+                        <span class="mr-1">Sonraki</span>
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-4 w-4"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                        >
+                            <path
+                                fill-rule="evenodd"
+                                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                                clip-rule="evenodd"
+                            />
+                        </svg>
+                    </button>
                 </div>
-                <img
-                    src={"http://localhost:8000/cameras/output/" +
-                        notification.image_url}
-                    alt="Thumbnail"
-                    class="w-full rounded-md mt-2"
-                />
-                <p class="text-gray-500 text-xs mt-2">
-                    {notification.time.split(".")[0]}
-                </p>
+
+                <div class="flex space-x-1 text-sm">
+                    <button
+                        class="bg-red-500 hover:bg-red-700 text-white py-1 px-2 rounded flex items-center"
+                        on:click={deleteCurrentPageNotifications}
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-4 w-4 mr-1"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                        >
+                            <path
+                                fill-rule="evenodd"
+                                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                clip-rule="evenodd"
+                            />
+                        </svg>
+                        Sayfayı Sil
+                    </button>
+                    <button
+                        class="bg-red-600 hover:bg-red-800 text-white py-1 px-2 rounded flex items-center"
+                        on:click={deleteAllNotifications}
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-4 w-4 mr-1"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                        >
+                            <path
+                                fill-rule="evenodd"
+                                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                clip-rule="evenodd"
+                            />
+                        </svg>
+                        Tümünü Sil
+                    </button>
+                    <button
+                        class="bg-gray-500 hover:bg-gray-700 text-white py-1 px-2 rounded"
+                        on:click={closeModal}
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-5 w-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
+                    </button>
+                </div>
             </div>
-        {/each}
+        </div>
+
+        <!-- Content -->
+        <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 flex-grow">
+            {#each notifications as notification}
+                <NotificationCard
+                    {notification}
+                    on:imageClick={handleImageClick}
+                    on:delete={handleNotificationDelete}
+                />
+            {/each}
+        </div>
     </div>
 </div>
 
+<!-- Image Viewer -->
 {#if selectedImage}
-    <div class="fixed inset-0 flex items-center justify-center bg-white z-50">
+    <div class="fixed top-0 left-0 w-full h-full bg-white flex items-center justify-center z-50">
+        <!-- Kapat butonu sağ üst köşeye taşındı -->
         <button
-                class="absolute top-4 right-4 z-50 bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center text-gray-700 hover:text-gray-900"
-                on:click={closeImage}
-            >
+            class="absolute top-4 right-4 z-50 bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center text-gray-700 hover:text-gray-900"
+            on:click={closeImage}
+        >
             <span class="text-xl">&times;</span>
-            </button>
+        </button>
+
         <button
-            class="absolute left-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0"
+            class="absolute left-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0 text-2xl"
             on:click={showPreviousImage}
         >
-            <span
-                class="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-700 text-2xl"
-            >
-                ←
-            </span>
+            ←
         </button>
-        <img
-            class="max-w-full max-h-full py-24"
-            src={selectedImage}
-            alt="Detected frame"
-        />
+
+        <div class="relative bg-white p-4 rounded-lg">
+            <img
+                src={selectedImage}
+                alt="Detected frame"
+                class="max-w-full max-h-[80vh]"
+            />
+        </div>
+
         <button
-            class="absolute right-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0"
+            class="absolute right-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0 text-2xl"
             on:click={showNextImage}
         >
-            <span
-                class="absolute right-5 top-1/2 transform -translate-y-1/2 text-gray-700 text-2xl"
-            >
-                →
-            </span>
+            →
         </button>
-        <div class="absolute bottom-5 flex gap-4">
-            
-            <button
-                class="bg-red-500 text-white px-4 py-2 rounded-md"
-                on:click={() => removeNotification(selectedNotificationId)}
-            >
-                Remove Notification
-            </button>
-        </div>
     </div>
 {/if}
