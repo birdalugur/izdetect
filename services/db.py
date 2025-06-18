@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from pymongo import MongoClient
 from bson.objectid import ObjectId
-from datetime import datetime, timezone  # Add timezone import
+from datetime import datetime
 from typing import List
 import os
 from bson import SON
@@ -31,7 +31,8 @@ class Record(BaseModel):
     image_url: str
     time: datetime
     status: str = "active"
-    camera_id: int
+    camera_id: str
+    session_id: str
     id: str = Field(default_factory=lambda: str(ObjectId()), alias="id")
 
     class Config:
@@ -55,37 +56,58 @@ def add_detection_session(camera_id: str) -> str:
 
     session_data = {
         "camera_id": camera_id,
-        "start": datetime.now().isoformat(), 
+        "start": datetime.now().isoformat(),
         "end": None,
+        "record_count": None,
     }
     result = detection_sessions_collection.insert_one(session_data)
     client.close()
     return str(result.inserted_id)
 
 
+def get_notification_count(session_id: str) -> int:
+    """Belirtilen session_id'ye sahip notification kayıtlarının sayısını döndürür."""
+    db, client = get_db()
+    notifications_collection = db["notifications"]
+
+    count = notifications_collection.count_documents({"session_id": session_id})
+    client.close()
+    return count
+
 
 def update_last_open_session(camera_id: str):
-    """End timestamp'i olmayan en son oturumu bitiş zamanı ile günceller."""
+    """End timestamp'i olmayan en son oturumu bitiş zamanı ve kayıt sayısı ile günceller."""
     db, client = get_db()
     detection_sessions_collection = db["detection_sessions"]
 
-    detection_sessions_collection.update_one(
+    # En son açık oturumu al
+    last_session = detection_sessions_collection.find_one(
         {"camera_id": camera_id, "end": None},
-        {"$set": {"end": datetime.now().isoformat()}},
-        sort=SON([("start", -1)])  # DÜZELTİLEN SATIR
+        sort=SON([("start", -1)]),
     )
+
+    if last_session:
+        session_id = str(last_session["_id"])
+        record_count = get_notification_count(session_id)
+
+        detection_sessions_collection.update_one(
+            {"_id": ObjectId(session_id)},
+            {"$set": {"end": datetime.now().isoformat(), "record_count": record_count}},
+        )
+
     client.close()
 
 
-
 def update_detection_session_end(session_id: str):
-    """Update the end timestamp of a detection session."""
+    """Update the end timestamp and record count of a detection session."""
     db, client = get_db()
     detection_sessions_collection = db["detection_sessions"]
 
+    record_count = get_notification_count(session_id)
+
     detection_sessions_collection.update_one(
         {"_id": ObjectId(session_id)},
-        {"$set": {"end": datetime.now().isoformat()}}
+        {"$set": {"end": datetime.now().isoformat(), "record_count": record_count}},
     )
     client.close()
 
