@@ -36,6 +36,26 @@
         }
     };
 
+    /* ---------- Silme ---------- */
+    const deleteSession = async (id) => {
+        const ok = confirm(
+            "Bu oturumu ve ilişkili tüm bildirimleri silmek istediğinize emin misiniz?",
+        );
+        if (!ok) return;
+
+        try {
+            const res = await fetch(
+                `http://localhost:8000/detection-sessions/${id}`,
+                { method: "DELETE" },
+            );
+            if (!res.ok) throw new Error(res.status);
+            await fetchDetectionRecords(); // listeyi tazele
+        } catch (err) {
+            console.error("Deletion error:", err);
+            alert("Kayıt silinemedi.");
+        }
+    };
+
     onMount(fetchDetectionRecords);
     $: currentPage, fetchDetectionRecords(); // Sayfa değişince yeniden çek
 
@@ -103,6 +123,9 @@
                     <th class="px-4 py-2 text-left text-gray-600 border-b"
                         >Action</th
                     >
+                    <th class="px-4 py-2 text-left text-gray-600 border-b"
+                        >Delete</th
+                    >
                 </tr>
             </thead>
             <tbody>
@@ -133,6 +156,14 @@
                                 }`}
                             >
                                 Open
+                            </button>
+                        </td>
+                        <td class="px-4 py-2">
+                            <button
+                                on:click={() => deleteSession(rec._id)}
+                                class="py-1 px-3 rounded-lg text-white font-semibold bg-red-500 hover:bg-red-600 transition"
+                            >
+                                Delete
                             </button>
                         </td>
                     </tr>

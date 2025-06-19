@@ -114,6 +114,34 @@ def delete_notifications_by_ids(notification_ids: List[str]):
     return result
 
 
+def delete_detection_session_and_related(session_id: str) -> int:
+    """
+    Bir detection_session kaydını, ilişkili notification'ları ve bunların görsellerini siler.
+
+    Args:
+        session_id: Silinecek detection_session’ın string ObjectId’si
+
+    Returns:
+        Silinen detection_session adedi (0 | 1)
+    """
+    try:
+        obj_id = ObjectId(session_id)
+    except Exception:
+        return 0
+
+    # 1) İlgili notification’ları ve görselleri temizle
+    notifications = list(
+        notifications_collection.find({"session_id": session_id}, {"image_url": 1})
+    )
+    for n in notifications:
+        delete_image(n.get("image_url"))
+    notifications_collection.delete_many({"session_id": session_id})
+
+    # 2) Detection session’ı sil
+    result = detection_sessions_collection.delete_one({"_id": obj_id})
+    return result.deleted_count
+
+
 def delete_all(start_date, end_date):
     if isinstance(start_date, str):
         start_date = datetime.fromisoformat(start_date)
