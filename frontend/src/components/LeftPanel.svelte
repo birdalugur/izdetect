@@ -1,7 +1,7 @@
 <script>
     import Control from "./Control.svelte";
     import Ram from "./Ram.svelte";
-    import FilterNotifications from "./FilterNotifications.svelte";
+    import Filter from "./Filter.svelte";
 
     // Props
     export let addMessage;
@@ -10,5 +10,5 @@
 <div class="bg-white-100 flex flex-col gap-5 overflow-y-auto rounded-lg">
     <Control {addMessage} />
     <Ram />
-    <FilterNotifications />
+    <Filter />
 </div>

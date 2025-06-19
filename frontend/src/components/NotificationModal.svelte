@@ -1,15 +1,140 @@
-<!-- NotificationModal.svelte -->
 <script>
-    import { createEventDispatcher } from "svelte";
+    import { createEventDispatcher, onMount } from "svelte";
     import NotificationCard from "./NotificationCard.svelte";
 
     const dispatch = createEventDispatcher();
 
-    export let notifications = [];
-    export let currentPage = 1;
-    export let pageSize = 12;
-    export let selectedImage = null;
-    export let selectedNotificationId = null;
+    export let filterParams = null; // Filter.svelte'den gelen parametreler
+
+    let notifications = [];
+    let selectedImage = null;
+    let selectedNotificationId = null;
+    let currentPage = 1;
+    let pageSize = 12;
+    let totalNotifications = 0;
+
+    onMount(() => {
+        if (filterParams) {
+            fetchNotificationsByDate(1);
+        }
+    });
+
+    const fetchNotificationsByDate = async (page = 1) => {
+        if (!filterParams || !filterParams.startDate || !filterParams.endDate) {
+            alert("Lütfen başlangıç ve bitiş tarihini seçin.");
+            return;
+        }
+
+        const { startDate, endDate, startTime, endTime, selectedLabels } = filterParams;
+
+        const startDateTime = startTime
+            ? `${startDate}T${startTime}`
+            : startDate;
+        const endDateTime = endTime ? `${endDate}T${endTime}` : endDate;
+
+        let labelsParam = "";
+        const selectedLabelIds = [];
+        if (selectedLabels.human) selectedLabelIds.push(1);
+        if (selectedLabels.vehicle) selectedLabelIds.push(2);
+        if (selectedLabels.animal) selectedLabelIds.push(3);
+
+        if (selectedLabelIds.length > 0) {
+            labelsParam = selectedLabelIds.join(",");
+        }
+
+        try {
+            const skip = (page - 1) * pageSize;
+            const response = await fetch(
+                `http://localhost:8000/notifications/by_date?start_date=${startDateTime}&end_date=${endDateTime}&skip=${skip}&limit=${pageSize}&labels=${labelsParam}`,
+            );
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            notifications = data;
+            totalNotifications = data.length;
+            currentPage = page;
+        } catch (error) {
+            console.error("Bildirimler alınamadı:", error);
+            alert("Bildirimler alınamadı.");
+        }
+    };
+
+    const deleteNotification = async (id) => {
+        try {
+            await fetch(`http://localhost:8000/notifications/${id}`, {
+                method: "DELETE",
+            });
+            notifications = notifications.filter((n) => n._id !== id);
+        } catch (error) {
+            console.error("Bildirim silinemedi:", error);
+            alert("Bildirim silinemedi.");
+        }
+    };
+
+    const deleteAllNotifications = async () => {
+        if (!filterParams || !filterParams.startDate || !filterParams.endDate) {
+            alert("Lütfen başlangıç ve bitiş tarihini seçin.");
+            return;
+        }
+
+        const { startDate, endDate, startTime, endTime } = filterParams;
+
+        // Combine date and time for start and end
+        const startDateTime = startTime
+            ? `${startDate}T${startTime}`
+            : startDate;
+        const endDateTime = endTime ? `${endDate}T${endTime}` : endDate;
+
+        try {
+            const response = await fetch(
+                `http://localhost:8000/notifications/by_date?start_date=${startDateTime}&end_date=${endDateTime}`,
+                {
+                    method: "DELETE",
+                },
+            );
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const result = await response.json();
+            alert(result.message);
+            notifications = [];
+        } catch (error) {
+            console.error("Bildirimler silinemedi:", error);
+            alert("Bildirimler silinemedi.");
+        }
+    };
+
+    const deleteCurrentPageNotifications = async () => {
+        if (notifications.length === 0) {
+            alert("Silinecek bildirim yok.");
+            return;
+        }
+
+        const notificationIds = notifications.map((n) => n._id);
+
+        try {
+            const response = await fetch(
+                `http://localhost:8000/notifications/batch_delete`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ notification_ids: notificationIds }),
+                },
+            );
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const result = await response.json();
+            notifications = [];
+            alert(result.message);
+        } catch (error) {
+            console.error("Bildirimler silinemedi:", error);
+            alert("Bildirimler silinemedi.");
+        }
+    };
 
     const closeModal = () => {
         dispatch("close");
@@ -18,13 +143,11 @@
     const showImage = (imageUrl, id) => {
         selectedImage = "http://localhost:8000/cameras/output/" + imageUrl;
         selectedNotificationId = id;
-        dispatch("imageSelect", { imageUrl: selectedImage, id });
     };
 
     const closeImage = () => {
         selectedImage = null;
         selectedNotificationId = null;
-        dispatch("imageClose");
     };
 
     const showNextImage = () => {
@@ -49,22 +172,14 @@
 
     const nextPage = () => {
         if (notifications.length === pageSize) {
-            dispatch("nextPage");
+            fetchNotificationsByDate(currentPage + 1);
         }
     };
 
     const previousPage = () => {
         if (currentPage > 1) {
-            dispatch("previousPage");
+            fetchNotificationsByDate(currentPage - 1);
         }
-    };
-
-    const deleteCurrentPageNotifications = () => {
-        dispatch("deleteCurrentPage");
-    };
-
-    const deleteAllNotifications = () => {
-        dispatch("deleteAll");
     };
 
     const handleImageClick = (event) => {
@@ -74,7 +189,7 @@
 
     const handleNotificationDelete = (event) => {
         const id = event.detail;
-        dispatch("deleteNotification", id);
+        deleteNotification(id);
     };
 </script>
 

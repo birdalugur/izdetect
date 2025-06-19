@@ -1,15 +1,15 @@
 <script>
     import { writable } from "svelte/store";
     import { onMount } from "svelte";
-    import FilterNotifications from "./FilterNotifications.svelte";
+    import NotificationModal from "./NotificationModal.svelte";
 
-    /* ---------- Durum ---------- */
+    /* ---------- Durum ---------- */
     const detectionRecords = writable([]);
     let currentPage = 1;
     const recordsPerPage = 4;
     let totalRecords = 0;
 
-    /* ---------- Türetilen değerler ---------- */
+    /* ---------- Türetilen değerler ---------- */
     $: totalPages = Math.ceil(totalRecords / recordsPerPage);
     $: pageNumbers = (() => {
         if (!totalPages) return [];
@@ -20,7 +20,7 @@
         return Array.from({ length: end - start + 1 }, (_, i) => start + i);
     })();
 
-    /* ---------- Veri çekme ---------- */
+    /* ---------- Veri çekme ---------- */
     const fetchDetectionRecords = async () => {
         const skip = (currentPage - 1) * recordsPerPage;
         try {
@@ -36,7 +36,7 @@
         }
     };
 
-    /* ---------- Silme ---------- */
+    /* ---------- Silme ---------- */
     const deleteSession = async (id) => {
         const ok = confirm(
             "Bu oturumu ve ilişkili tüm bildirimleri silmek istediğinize emin misiniz?",
@@ -59,7 +59,7 @@
     onMount(fetchDetectionRecords);
     $: currentPage, fetchDetectionRecords(); // Sayfa değişince yeniden çek
 
-    /* ---------- Yardımcılar ---------- */
+    /* ---------- Yardımcılar ---------- */
     const fmt = (iso, type = "date") => {
         const d = new Date(iso);
         return type === "date"
@@ -72,23 +72,31 @@
               });
     };
 
-    /* ---------- Modal kontrolü ---------- */
-    let showFilterModal = false;
-    let filterStartDate = "",
-        filterEndDate = "",
-        filterStartTime = "",
-        filterEndTime = "";
+    /* ---------- Modal kontrolü ---------- */
+    let showModal = false;
+    let modalFilterParams = null;
 
     const openImages = (r) => {
-        filterStartDate = fmt(r.start, "date");
-        filterEndDate = fmt(r.end, "date");
-        filterStartTime = fmt(r.start, "time");
-        filterEndTime = fmt(r.end, "time");
-        showFilterModal = true;
+        modalFilterParams = {
+            startDate: fmt(r.start, "date"),
+            endDate: fmt(r.end, "date"),
+            startTime: fmt(r.start, "time"),
+            endTime: fmt(r.end, "time"),
+            selectedLabels: {
+                human: false,
+                vehicle: false,
+                animal: false,
+            }
+        };
+        showModal = true;
     };
-    const closeFilterModal = () => (showFilterModal = false);
 
-    /* ---------- Sayfalama ---------- */
+    const closeModal = () => {
+        showModal = false;
+        modalFilterParams = null;
+    };
+
+    /* ---------- Sayfalama ---------- */
     const goToPage = (p) => p >= 1 && p <= totalPages && (currentPage = p);
     const nextPage = () => goToPage(currentPage + 1);
     const prevPage = () => goToPage(currentPage - 1);
@@ -234,13 +242,9 @@
     {/if}
 </div>
 
-{#if showFilterModal}
-    <FilterNotifications
-        bind:startDate={filterStartDate}
-        bind:endDate={filterEndDate}
-        bind:startTime={filterStartTime}
-        bind:endTime={filterEndTime}
-        autoOpen={true}
-        on:close={closeFilterModal}
+{#if showModal}
+    <NotificationModal
+        filterParams={modalFilterParams}
+        on:close={closeModal}
     />
 {/if}
