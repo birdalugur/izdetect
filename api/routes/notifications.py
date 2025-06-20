@@ -13,6 +13,7 @@ from db import (
     delete_notification,
     delete_all,
     delete_notifications_by_ids,
+    get_notifications_by_session,
 )
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
@@ -52,6 +53,28 @@ async def get_notifications_by_date_endpoint(
         label_list = [int(label) for label in labels.split(",")] if labels else None
         notifications = get_notifications_by_date(
             start_date, end_date, skip, limit, label_list
+        )
+        notifications = [
+            map_labels(notification, Config.LABEL_MAP) for notification in notifications
+        ]
+        return JSONResponse(notifications)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid label format: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/by_session/{session_id}")
+async def get_notifications_by_session_endpoint(
+    session_id: str,
+    skip: int = 0,
+    limit: int = 12,
+    labels: Optional[str] = None,
+):
+    try:
+        label_list = [int(label) for label in labels.split(",")] if labels else None
+        notifications = get_notifications_by_session(
+            session_id, skip, limit, label_list
         )
         notifications = [
             map_labels(notification, Config.LABEL_MAP) for notification in notifications

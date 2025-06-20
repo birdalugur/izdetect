@@ -206,8 +206,55 @@ def get_notifications_by_date(
     return notifications
 
 
+def get_notifications_by_session(
+    session_id: str,
+    skip: int = 0,
+    limit: int = 12,
+    label_list: Optional[List[str]] = None,
+) -> List[dict]:
+    """
+    Belirtilen session_id'ye göre bildirimleri getirir.
+
+    Args:
+        session_id: Bildirimlerin getirileceği session ID'si
+        skip: Kaç kayıt atlanacak
+        limit: Kaç kayıt alınacak
+        label_list: Filtrelenecek label ID'leri listesi (opsiyonel)
+
+    Returns:
+        Belirtilen session_id ile ilişkili bildirimlerin listesi
+    """
+    query = {"session_id": session_id}
+
+    if label_list:
+        label_exists_conditions = [
+            {f"labels.{label}": {"$exists": True}} for label in label_list
+        ]
+        not_other_labels_condition = {
+            "labels": {
+                "$not": {
+                    "$elemMatch": {
+                        "$and": [
+                            {str(label): {"$exists": False}} for label in label_list
+                        ]
+                    }
+                }
+            }
+        }
+        query["$and"] = [*label_exists_conditions, not_other_labels_condition]
+
+    notifications = list(notifications_collection.find(query).skip(skip).limit(limit))
+
+    for notification in notifications:
+        notification["_id"] = str(notification["_id"])
+        for key, value in notification.items():
+            if isinstance(value, datetime):
+                notification[key] = value.isoformat()
+
+    return notifications
+
+
 if __name__ == "__main__":
-    ds = get_all_detection_sessions()
+    ds = get_notifications_by_session("6853c51e0d165f98edfe78f4", 0, 10, ["1", "2"])
     print(ds)
-    das = get_active_sessions()
-    print(das)
+    print("length:", len(ds))

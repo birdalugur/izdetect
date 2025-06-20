@@ -74,26 +74,16 @@
 
     /* ---------- Modal kontrolü ---------- */
     let showModal = false;
-    let modalFilterParams = null;
+    let modalSessionId = null;
 
     const openImages = (r) => {
-        modalFilterParams = {
-            startDate: fmt(r.start, "date"),
-            endDate: fmt(r.end, "date"),
-            startTime: fmt(r.start, "time"),
-            endTime: fmt(r.end, "time"),
-            selectedLabels: {
-                human: false,
-                vehicle: false,
-                animal: false,
-            }
-        };
+        modalSessionId = r._id;
         showModal = true;
     };
 
     const closeModal = () => {
         showModal = false;
-        modalFilterParams = null;
+        modalSessionId = null;
     };
 
     /* ---------- Sayfalama ---------- */
@@ -180,7 +170,7 @@
                 {#if $detectionRecords.length === 0}
                     <tr>
                         <td
-                            colspan="5"
+                            colspan="6"
                             class="px-4 py-8 text-center text-gray-500"
                         >
                             No detection records found
@@ -244,7 +234,7 @@
 
 {#if showModal}
     <NotificationModal
-        filterParams={modalFilterParams}
+        sessionId={modalSessionId}
         on:close={closeModal}
     />
 {/if}

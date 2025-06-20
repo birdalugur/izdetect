@@ -5,6 +5,7 @@
     const dispatch = createEventDispatcher();
 
     export let filterParams = null; // Filter.svelte'den gelen parametreler
+    export let sessionId = null; // Table.svelte'den gelen session_id
 
     let notifications = [];
     let selectedImage = null;
@@ -13,11 +14,41 @@
     let pageSize = 12;
     let totalNotifications = 0;
 
+    // Modal'in kaynağını belirle
+    $: isFromTable = sessionId !== null;
+    $: isFromFilter = filterParams !== null;
+
     onMount(() => {
-        if (filterParams) {
+        if (isFromTable) {
+            fetchNotificationsBySession(1);
+        } else if (isFromFilter) {
             fetchNotificationsByDate(1);
         }
     });
+
+    const fetchNotificationsBySession = async (page = 1) => {
+        if (!sessionId) {
+            alert("Session ID bulunamadı.");
+            return;
+        }
+
+        try {
+            const skip = (page - 1) * pageSize;
+            const response = await fetch(
+                `http://localhost:8000/notifications/by_session/${sessionId}?skip=${skip}&limit=${pageSize}`,
+            );
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            notifications = data;
+            totalNotifications = data.length;
+            currentPage = page;
+        } catch (error) {
+            console.error("Bildirimler alınamadı:", error);
+            alert("Bildirimler alınamadı.");
+        }
+    };
 
     const fetchNotificationsByDate = async (page = 1) => {
         if (!filterParams || !filterParams.startDate || !filterParams.endDate) {
@@ -73,35 +104,61 @@
     };
 
     const deleteAllNotifications = async () => {
-        if (!filterParams || !filterParams.startDate || !filterParams.endDate) {
-            alert("Lütfen başlangıç ve bitiş tarihini seçin.");
-            return;
-        }
-
-        const { startDate, endDate, startTime, endTime } = filterParams;
-
-        // Combine date and time for start and end
-        const startDateTime = startTime
-            ? `${startDate}T${startTime}`
-            : startDate;
-        const endDateTime = endTime ? `${endDate}T${endTime}` : endDate;
-
-        try {
-            const response = await fetch(
-                `http://localhost:8000/notifications/by_date?start_date=${startDateTime}&end_date=${endDateTime}`,
-                {
-                    method: "DELETE",
-                },
-            );
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+        if (isFromTable) {
+            // Session'a göre tüm bildirimleri sil
+            if (!sessionId) {
+                alert("Session ID bulunamadı.");
+                return;
             }
-            const result = await response.json();
-            alert(result.message);
-            notifications = [];
-        } catch (error) {
-            console.error("Bildirimler silinemedi:", error);
-            alert("Bildirimler silinemedi.");
+
+            try {
+                const response = await fetch(
+                    `http://localhost:8000/detection-sessions/${sessionId}`,
+                    {
+                        method: "DELETE",
+                    },
+                );
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const result = await response.json();
+                alert("Session ve tüm bildirimleri silindi.");
+                notifications = [];
+            } catch (error) {
+                console.error("Session silinemedi:", error);
+                alert("Session silinemedi.");
+            }
+        } else if (isFromFilter) {
+            // Tarih aralığına göre tüm bildirimleri sil
+            if (!filterParams || !filterParams.startDate || !filterParams.endDate) {
+                alert("Lütfen başlangıç ve bitiş tarihini seçin.");
+                return;
+            }
+
+            const { startDate, endDate, startTime, endTime } = filterParams;
+
+            const startDateTime = startTime
+                ? `${startDate}T${startTime}`
+                : startDate;
+            const endDateTime = endTime ? `${endDate}T${endTime}` : endDate;
+
+            try {
+                const response = await fetch(
+                    `http://localhost:8000/notifications/by_date?start_date=${startDateTime}&end_date=${endDateTime}`,
+                    {
+                        method: "DELETE",
+                    },
+                );
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const result = await response.json();
+                alert(result.message);
+                notifications = [];
+            } catch (error) {
+                console.error("Bildirimler silinemedi:", error);
+                alert("Bildirimler silinemedi.");
+            }
         }
     };
 
@@ -172,13 +229,21 @@
 
     const nextPage = () => {
         if (notifications.length === pageSize) {
-            fetchNotificationsByDate(currentPage + 1);
+            if (isFromTable) {
+                fetchNotificationsBySession(currentPage + 1);
+            } else if (isFromFilter) {
+                fetchNotificationsByDate(currentPage + 1);
+            }
         }
     };
 
     const previousPage = () => {
         if (currentPage > 1) {
-            fetchNotificationsByDate(currentPage - 1);
+            if (isFromTable) {
+                fetchNotificationsBySession(currentPage - 1);
+            } else if (isFromFilter) {
+                fetchNotificationsByDate(currentPage - 1);
+            }
         }
     };
 
@@ -278,7 +343,7 @@
                                 clip-rule="evenodd"
                             />
                         </svg>
-                        Tümünü Sil
+                        {isFromTable ? 'Session\'ı Sil' : 'Tümünü Sil'}
                     </button>
                     <button
                         class="bg-gray-500 hover:bg-gray-700 text-white py-1 px-2 rounded"
