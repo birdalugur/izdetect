@@ -147,10 +147,28 @@ def delete_all(start_date, end_date):
         start_date = datetime.fromisoformat(start_date)
     if isinstance(end_date, str):
         end_date = datetime.fromisoformat(end_date)
+
+    # 1. Silinecek notification'ları al
+    notifications = list(
+        notifications_collection.find({"time": {"$gte": start_date, "$lte": end_date}})
+    )
+    deleted_session_ids = {n["session_id"] for n in notifications}
+
+    # 2. Notification'ları ve görselleri sil
+    for n in notifications:
+        delete_image(n.get("image_url"))
     result = notifications_collection.delete_many(
         {"time": {"$gte": start_date, "$lte": end_date}}
     )
+
+    # 3. Her session_id için hâlâ kayıt var mı kontrol et, yoksa session'ı sil
+    for session_id in deleted_session_ids:
+        remaining = notifications_collection.count_documents({"session_id": session_id})
+        if remaining == 0:
+            detection_sessions_collection.delete_one({"_id": ObjectId(session_id)})
+
     return result
+
 
 
 def clear_all_notifications():
