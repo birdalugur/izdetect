@@ -32,6 +32,10 @@ def get_detection_sessions_with_pagination(
 
     for session in sessions:
         session["_id"] = str(session["_id"])
+        session_id = session["_id"]
+        session["record_count"] = notifications_collection.count_documents(
+            {"session_id": session_id}
+        )
         for key in ["start", "end"]:
             if key in session and isinstance(session[key], datetime):
                 session[key] = session[key].isoformat()
@@ -168,7 +172,6 @@ def delete_all(start_date, end_date):
             detection_sessions_collection.delete_one({"_id": ObjectId(session_id)})
 
     return result
-
 
 
 def clear_all_notifications():
