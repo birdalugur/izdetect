@@ -20,7 +20,6 @@ class Inference(BaseClass):
         self.output_queue = output_queue
         self.image_bytes_queue = image_bytes_queue
         self.batch_size = batch_size
-        self.idle_count = 0
         self.stop_signal = False
 
     def process_single_frame(self, image_bytes: bytes):
@@ -42,18 +41,13 @@ class Inference(BaseClass):
         while not self.stop_signal:
             image_bytes = self.redis_client.rpop(self.input_queue, self.batch_size)
             if image_bytes:
-                self.idle_count = 0
                 if isinstance(image_bytes, bytes):
                     self.process_single_frame(image_bytes)
                 elif isinstance(image_bytes, list):
                     self.process_batch_frames(image_bytes)
             else:
-                self.idle_count += 1
-                print("Queue is empty, waiting...")
+                print("Queue is empty, inference waiting...")
                 time.sleep(1)
-                if self.idle_count >= 5:
-                    print("Queue is empty, entering sleep mode.")
-                    time.sleep(5)
 
     def stop(self):
         self.stop_signal = True

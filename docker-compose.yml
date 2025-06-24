@@ -38,7 +38,6 @@ services:
       - ./api:/app/api
       - ./requirements.txt:/app/requirements.txt
       - ./data:/app/data
-      - ./cameras.json:/app/cameras.json
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     ports:
@@ -67,7 +66,6 @@ services:
     command: python3 services/main.py
     volumes:
       - ./data:/app/data
-      - ./cameras.json:/app/cameras.json
       - ./services:/app/services
       - ./requirements.txt:/app/requirements.txt
       - /etc/localtime:/etc/localtime:ro

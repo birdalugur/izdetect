@@ -3,26 +3,24 @@ import json
 from typing import List
 from pydantic import BaseModel
 from fastapi import HTTPException
+from db import db
+
 
 class Camera(BaseModel):
     id: str
     ip: str
+
+
+camera_collection = db["cameras"]
+
 
 class CameraService:
     CAMERA_FILE = "cameras.json"
 
     @staticmethod
     def read_cameras() -> List[dict]:
-        try:
-            with open(CameraService.CAMERA_FILE, "r") as f:
-                return json.load(f)
-        except FileNotFoundError:
-            return []
-
-    @staticmethod
-    def write_cameras(cameras: List[Camera]):
-        with open(CameraService.CAMERA_FILE, "w") as f:
-            json.dump([cam.model_dump() for cam in cameras], f, indent=4)
+        cameras = list(camera_collection.find())
+        return [{"id": cam["id"], "ip": cam["ip"]} for cam in cameras]
 
     @staticmethod
     def get_camera_by_id(camera_id: str) -> dict:
@@ -31,3 +29,15 @@ class CameraService:
         if not camera:
             raise HTTPException(status_code=404, detail="Camera not found")
         return camera
+
+    @staticmethod
+    def add_camera(camera: Camera):
+        if camera_collection.find_one({"id": camera.id}):
+            raise HTTPException(status_code=400, detail="Camera ID already exists")
+        camera_collection.insert_one(camera.model_dump())
+
+    @staticmethod
+    def delete_camera(camera_id: str):
+        result = camera_collection.delete_one({"id": camera_id})
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Camera not found")

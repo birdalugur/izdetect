@@ -41,6 +41,7 @@ async def stop_detection():
     except Exception as e:
         raise ServerErrorException(f"Failed to stop frame producer: {e}")
 
+
 # SSE endpoint
 @router.get("/events")
 async def get_events(request: Request):
@@ -69,12 +70,18 @@ async def get_image(
     return FileResponse(file_path)
 
 
-@router.post("/set-cameras")
-async def set_cameras(cameras: List[Camera]):
-    CameraService.write_cameras(cameras)
-    return {"message": "Camera information saved successfully"}
-
-
 @router.get("/get-cameras")
 async def get_cameras():
     return CameraService.read_cameras()
+
+
+@router.post("/add")
+async def add_camera(camera: Camera):
+    CameraService.add_camera(camera)
+    return {"message": "Kamera başarıyla eklendi"}
+
+
+@router.delete("/{camera_id}")
+async def delete_camera(camera_id: str):
+    CameraService.delete_camera(camera_id)
+    return {"message": "Kamera başarıyla silindi"}

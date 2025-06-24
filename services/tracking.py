@@ -70,7 +70,7 @@ class DetectionProcessor(BaseClass):
                     self.output_queue, *[json.dumps(detection_ids_list).encode()]
                 )
             else:
-                print("Queue is empty, waiting...")
+                print("Queue is empty, Tracking waiting...")
                 time.sleep(2)
 
     @staticmethod
