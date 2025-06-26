@@ -207,42 +207,56 @@
         selectedNotificationId = null;
     };
 
-    const showNextImage = () => {
+    const showNextImage = async () => {
         const currentIndex = notifications.findIndex(
             (notification) => notification._id === selectedNotificationId,
         );
         if (currentIndex >= 0 && currentIndex < notifications.length - 1) {
             const nextNotification = notifications[currentIndex + 1];
             showImage(nextNotification.image_url, nextNotification._id);
+        } else if (currentIndex === notifications.length - 1 && notifications.length === pageSize) {
+            // Fetch the next page and show the first image of the new page
+            await nextPage();
+            if (notifications.length > 0) {
+                const nextNotification = notifications[0];
+                showImage(nextNotification.image_url, nextNotification._id);
+            }
         }
     };
 
-    const showPreviousImage = () => {
+    const showPreviousImage = async () => {
         const currentIndex = notifications.findIndex(
             (notification) => notification._id === selectedNotificationId,
         );
         if (currentIndex > 0) {
             const previousNotification = notifications[currentIndex - 1];
             showImage(previousNotification.image_url, previousNotification._id);
-        }
-    };
-
-    const nextPage = () => {
-        if (notifications.length === pageSize) {
-            if (isFromTable) {
-                fetchNotificationsBySession(currentPage + 1);
-            } else if (isFromFilter) {
-                fetchNotificationsByDate(currentPage + 1);
+        } else if (currentIndex === 0 && currentPage > 1) {
+            // Fetch the previous page and show the last image of the new page
+            await previousPage();
+            if (notifications.length > 0) {
+                const previousNotification = notifications[notifications.length - 1];
+                showImage(previousNotification.image_url, previousNotification._id);
             }
         }
     };
 
-    const previousPage = () => {
+    const nextPage = async () => {
+        if (notifications.length === pageSize) {
+            if (isFromTable) {
+                await fetchNotificationsBySession(currentPage + 1);
+            } else if (isFromFilter) {
+                await fetchNotificationsByDate(currentPage + 1);
+            }
+        }
+    };
+
+    const previousPage = async () => {
         if (currentPage > 1) {
             if (isFromTable) {
-                fetchNotificationsBySession(currentPage - 1);
+                await fetchNotificationsBySession(currentPage - 1);
             } else if (isFromFilter) {
-                fetchNotificationsByDate(currentPage - 1);
+                await fetchNotificationsByDate(currentPage - 1);
             }
         }
     };
