@@ -2,7 +2,6 @@ import json
 import numpy as np
 import time
 from typing import List
-from threading import Thread
 from sort import Sort
 from base import BaseClass
 from db import get_settings  # import MongoDB-based settings function

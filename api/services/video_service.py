@@ -1,7 +1,6 @@
 # app/services/video_service.py
 import cv2
 import time
-from fastapi import HTTPException
 from typing import Generator
 
 class VideoService:
