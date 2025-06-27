@@ -49,10 +49,6 @@ class DetectionProcessor(BaseClass):
         )
 
     def run(self):
-        # Start background watcher thread
-        self.settings_thread = Thread(target=self.update_settings, daemon=True)
-        self.settings_thread.start()
-
         while True:
             detection_bytes = self.redis_client.rpop(
                 self.input_queue
@@ -88,34 +84,6 @@ class DetectionProcessor(BaseClass):
             ]
             for row in detection_ids.tolist()
         ]
-
-    def update_settings(self):
-        while True:
-            try:
-                config = get_settings()
-                memory = int(config.get("memory", self.memory))
-                sensitivity = float(config.get("sensitivity", self.sensitivity))
-                print("Memory and Sensitivity Values: ", memory, sensitivity)
-
-                if memory != self.memory or sensitivity != self.sensitivity:
-                    self.memory = memory
-                    self.sensitivity = sensitivity
-                    self.min_hits = int(1 + sensitivity * 4)
-                    self.iou_threshold = 0.5 - (sensitivity * 0.4)
-
-                    self.tracker = Sort(
-                        max_age=self.memory,
-                        min_hits=self.min_hits,
-                        iou_threshold=self.iou_threshold,
-                    )
-
-                    print(
-                        f"[Config Updated] memory={memory}, sensitivity={sensitivity}"
-                    )
-            except Exception as e:
-                print(f"Error fetching settings from MongoDB: {e}")
-
-            time.sleep(3)
 
 
 if __name__ == "__main__":
