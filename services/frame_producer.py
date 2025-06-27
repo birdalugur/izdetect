@@ -27,8 +27,6 @@ class FrameProducer(BaseClass):
         print(f"Stopping FrameProducer for camera {self.camera_id}...")
 
     def run(self, encoding_method="binary"):
-        # Detect işlemi başladığında MongoDB'ye kayıt ekle
-
         retry_count = 0
         max_retries = 5
 
@@ -72,7 +70,6 @@ class FrameProducer(BaseClass):
             not_ret_count = 0
 
         cap.release()
-        # Detect işlemi sona erdiğinde MongoDB'deki kaydı güncelle
 
 
 if __name__ == "__main__":
