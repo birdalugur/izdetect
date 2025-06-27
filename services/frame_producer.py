@@ -20,14 +20,6 @@ class FrameProducer(BaseClass):
         super().__init__(redis_client)
         self.stop_signal = False
 
-    def __repr__(self):
-        return (
-            f"FrameProducer(output_queue={self.output_queue}, "
-            f"redis_client={self.redis_client}, "
-            f"video_source={self.video_source}, "
-            f"camera_id={self.camera_id})"
-        )
-
     def stop(self):
         """Kamera bağlantısını kes ve işlemi durdur."""
         self.stop_signal = True
