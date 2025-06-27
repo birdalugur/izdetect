@@ -275,6 +275,29 @@ def get_notifications_by_session(
     return notifications
 
 
+settings_collection = db["system_settings"]
+
+
+def get_settings():
+    settings_doc = settings_collection.find_one({"_id": "global_settings"})
+    if settings_doc:
+        return {
+            "memory": settings_doc.get("memory", 5),
+            "sensitivity": settings_doc.get("sensitivity", 0.2),
+        }
+    else:
+        # Return defaults if not found
+        return {"memory": 5, "sensitivity": 0.2}
+
+
+def update_settings(memory: int, sensitivity: float):
+    settings_collection.update_one(
+        {"_id": "global_settings"},
+        {"$set": {"memory": memory, "sensitivity": sensitivity}},
+        upsert=True,
+    )
+
+
 if __name__ == "__main__":
     ds = get_notifications_by_session("6853c51e0d165f98edfe78f4", 0, 10, ["1", "2"])
     print(ds)

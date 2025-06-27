@@ -123,6 +123,19 @@ def test_mongodb_connection():
         print(f"MongoDB bağlanti hatasi: {e}")
         return False
 
+def get_settings():
+    db = get_db()[0]
+    settings_collection = db["system_settings"]
+    settings_doc = settings_collection.find_one({"_id": "global_settings"})
+    if settings_doc:
+        return {
+            "memory": settings_doc.get("memory", 5),
+            "sensitivity": settings_doc.get("sensitivity", 0.2),
+        }
+    else:
+        # Return defaults if not found
+        return {"memory": 5, "sensitivity": 0.2}
+    
 
 if __name__ == "__main__":
     test_mongodb_connection()

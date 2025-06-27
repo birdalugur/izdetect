@@ -2,7 +2,6 @@ import os
 
 from fastapi import APIRouter, Path, Request
 from fastapi.responses import FileResponse, StreamingResponse
-from typing import List
 from services.camera_service import CameraService, Camera
 from services.video_service import VideoService
 from services.redis_service import RedisService

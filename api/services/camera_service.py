@@ -1,5 +1,3 @@
-# app/services/camera_service.py
-import json
 from typing import List
 from pydantic import BaseModel
 from fastapi import HTTPException
@@ -15,8 +13,6 @@ camera_collection = db["cameras"]
 
 
 class CameraService:
-    CAMERA_FILE = "cameras.json"
-
     @staticmethod
     def read_cameras() -> List[dict]:
         cameras = list(camera_collection.find())
