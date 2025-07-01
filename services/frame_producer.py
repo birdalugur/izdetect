@@ -38,7 +38,7 @@ class FrameProducer(BaseClass):
         # Detect işlemi başladığında MongoDB'ye kayıt ekle
 
         retry_count = 0
-        max_retries = 5
+        max_retries = 6
 
         while retry_count < max_retries:
             cap = cv2.VideoCapture(self.video_source)
@@ -64,7 +64,7 @@ class FrameProducer(BaseClass):
             if not ret:
                 not_ret_count += 1
                 print("No frames from camera, retrying {}...".format(not_ret_count))
-                time.sleep(0.1)
+                time.sleep(1)
                 if not_ret_count > 5:
                     print("Camera disconnected, switching to URL wait mode.")
                     self.stop_signal = True

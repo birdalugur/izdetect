@@ -1,6 +1,4 @@
-# Use NVIDIA CUDA 12.6 base image with Python support
-FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
-
+FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1

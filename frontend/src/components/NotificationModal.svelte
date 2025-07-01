@@ -1,431 +1,282 @@
+<!-- src/components/NotificationModal.svelte -->
 <script>
-    import { createEventDispatcher, onMount } from "svelte";
-    import NotificationCard from "./NotificationCard.svelte";
+  import { onMount, createEventDispatcher } from 'svelte';
+  import Pagination from './Pagination.svelte';
+  import LabelTag from './LabelTag.svelte';
 
-    const dispatch = createEventDispatcher();
+  export let filterParams = null;
+  export let sessionId = null;
 
-    export let filterParams = null; // Filter.svelte'den gelen parametreler
-    export let sessionId = null; // Table.svelte'den gelen session_id
+  const dispatch = createEventDispatcher();
 
-    let notifications = [];
-    let selectedImage = null;
-    let selectedNotificationId = null;
-    let currentPage = 1;
-    let pageSize = 12;
-    let totalNotifications = 0;
+  let notifications = [];
+  let selectedImage = null;
+  let selectedNotificationId = null;
+  let loading = true;
+  let error = null;
 
-    // Modal'in kaynağını belirle
-    $: isFromTable = sessionId !== null;
-    $: isFromFilter = filterParams !== null;
+  const perPage = 12;
+  let currentPage = 1;
 
-    onMount(() => {
-        if (isFromTable) {
-            fetchNotificationsBySession(1);
-        } else if (isFromFilter) {
-            fetchNotificationsByDate(1);
+  $: totalPages = Math.ceil(notifications.length / perPage);
+  $: paged = notifications.slice(
+    (currentPage - 1) * perPage,
+    currentPage * perPage
+  );
+
+  async function fetchNotifications() {
+    loading = true;
+    error = null;
+    
+    try {
+      let url;
+      
+      if (sessionId) {
+        // Session ID'ye göre notification'ları getir - doğru endpoint
+        url = `http://localhost:8000/notifications/by_session/${sessionId}`;
+        console.log('Session ID ile API çağrısı:', url);
+      } else if (filterParams) {
+        // Filtre parametrelerine göre notification'ları getir - doğru endpoint
+        const params = new URLSearchParams();
+        
+        // Tarih filtreleri (API'nin beklediği format)
+        if (filterParams.startDate) {
+          let startDateTime = filterParams.startDate;
+          if (filterParams.startTime) {
+            startDateTime += `T${filterParams.startTime}:00`;
+          } else {
+            startDateTime += 'T00:00:00';
+          }
+          params.append('start_date', startDateTime);
         }
-    });
-
-    const fetchNotificationsBySession = async (page = 1) => {
-        if (!sessionId) {
-            alert("Session ID bulunamadı.");
-            return;
+        
+        if (filterParams.endDate) {
+          let endDateTime = filterParams.endDate;
+          if (filterParams.endTime) {
+            endDateTime += `T${filterParams.endTime}:59`;
+          } else {
+            endDateTime += 'T23:59:59';
+          }
+          params.append('end_date', endDateTime);
         }
-
-        try {
-            const skip = (page - 1) * pageSize;
-            const response = await fetch(
-                `http://localhost:8000/notifications/by_session/${sessionId}?skip=${skip}&limit=${pageSize}`,
-            );
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-            notifications = data;
-            totalNotifications = data.length;
-            currentPage = page;
-        } catch (error) {
-            console.error("Bildirimler alınamadı:", error);
-            alert("Bildirimler alınamadı.");
+        
+        // Seçili etiketleri ekle - API integer bekliyor (label_map'e göre)
+        const selectedLabels = Object.entries(filterParams.selectedLabels || {})
+          .filter(([key, val]) => val === true)
+          .map(([key, val]) => key);
+          
+        console.log('Seçili etiketler:', selectedLabels);
+        
+        // Label mapping: Config.LABEL_MAP'e göre (1: "insan", 2: "arac", 3: "hayvan")
+        const labelMap = { 'insan': 1, 'arac': 2, 'hayvan': 3 };
+        const labelIds = selectedLabels
+          .map(label => labelMap[label])
+          .filter(id => id !== undefined);
+          
+        if (labelIds.length > 0) {
+          params.append('labels', labelIds.join(','));
         }
-    };
+        
+        // Pagination parametreleri
+        params.append('skip', '0');
+        params.append('limit', '100'); // Daha fazla sonuç için
+        
+        url = `http://localhost:8000/notifications/by_date?${params.toString()}`;
+        console.log('Filtre ile API çağrısı:', url);
+      } else {
+        // Varsayılan olarak tüm notification'ları getir
+        url = 'http://localhost:8000/notifications';
+      }
 
-    const fetchNotificationsByDate = async (page = 1) => {
-        if (!filterParams || !filterParams.startDate || !filterParams.endDate) {
-            alert("Lütfen başlangıç ve bitiş tarihini seçin.");
-            return;
-        }
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      
+      const data = await res.json();
+      notifications = Array.isArray(data) ? data.reverse() : [];
+      currentPage = 1;
+      
+      console.log(`${notifications.length} bildirim yüklendi:`, notifications);
+    } catch (e) {
+      console.error('Notification yükleme hatası:', e);
+      error = e.message;
+      notifications = [];
+    } finally {
+      loading = false;
+    }
+  }
 
-        const { startDate, endDate, startTime, endTime, selectedLabels } = filterParams;
+  onMount(fetchNotifications);
 
-        const startDateTime = startTime
-            ? `${startDate}T${startTime}`
-            : startDate;
-        const endDateTime = endTime ? `${endDate}T${endTime}` : endDate;
+  function showImage(url, id) {
+    selectedNotificationId = id;
+    selectedImage = `http://localhost:8000/cameras/output/${url}`;
+  }
 
-        let labelsParam = "";
-        const selectedLabelIds = [];
-        if (selectedLabels.human) selectedLabelIds.push(1);
-        if (selectedLabels.vehicle) selectedLabelIds.push(2);
-        if (selectedLabels.animal) selectedLabelIds.push(3);
+  function closeImage() {
+    selectedImage = null;
+    selectedNotificationId = null;
+  }
 
-        if (selectedLabelIds.length > 0) {
-            labelsParam = selectedLabelIds.join(",");
-        }
+  function showNextImage() {
+    const idx = notifications.findIndex(n => n._id === selectedNotificationId);
+    if (idx < 0) return;
+    const next = notifications[idx + 1];
+    if (next) showImage(next.image_url, next._id);
+  }
 
-        try {
-            const skip = (page - 1) * pageSize;
-            const response = await fetch(
-                `http://localhost:8000/notifications/by_date?start_date=${startDateTime}&end_date=${endDateTime}&skip=${skip}&limit=${pageSize}&labels=${labelsParam}`,
-            );
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-            notifications = data;
-            totalNotifications = data.length;
-            currentPage = page;
-        } catch (error) {
-            console.error("Bildirimler alınamadı:", error);
-            alert("Bildirimler alınamadı.");
-        }
-    };
+  function showPreviousImage() {
+    const idx = notifications.findIndex(n => n._id === selectedNotificationId);
+    if (idx < 0) return;
+    const prev = notifications[idx - 1];
+    if (prev) showImage(prev.image_url, prev._id);
+  }
 
-    const deleteNotification = async (id) => {
-        try {
-            await fetch(`http://localhost:8000/notifications/${id}`, {
-                method: "DELETE",
-            });
-            notifications = notifications.filter((n) => n._id !== id);
-        } catch (error) {
-            console.error("Bildirim silinemedi:", error);
-            alert("Bildirim silinemedi.");
-        }
-    };
+  function closeModal() {
+    dispatch('close');
+  }
 
-    const deleteAllNotifications = async () => {
-        if (isFromTable) {
-            // Session'a göre tüm bildirimleri sil
-            if (!sessionId) {
-                alert("Session ID bulunamadı.");
-                return;
-            }
-
-            try {
-                const response = await fetch(
-                    `http://localhost:8000/detection-sessions/${sessionId}`,
-                    {
-                        method: "DELETE",
-                    },
-                );
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const result = await response.json();
-                alert("Session ve tüm bildirimleri silindi.");
-                notifications = [];
-            } catch (error) {
-                console.error("Session silinemedi:", error);
-                alert("Session silinemedi.");
-            }
-        } else if (isFromFilter) {
-            // Tarih aralığına göre tüm bildirimleri sil
-            if (!filterParams || !filterParams.startDate || !filterParams.endDate) {
-                alert("Lütfen başlangıç ve bitiş tarihini seçin.");
-                return;
-            }
-
-            const { startDate, endDate, startTime, endTime } = filterParams;
-
-            const startDateTime = startTime
-                ? `${startDate}T${startTime}`
-                : startDate;
-            const endDateTime = endTime ? `${endDate}T${endTime}` : endDate;
-
-            try {
-                const response = await fetch(
-                    `http://localhost:8000/notifications/by_date?start_date=${startDateTime}&end_date=${endDateTime}`,
-                    {
-                        method: "DELETE",
-                    },
-                );
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const result = await response.json();
-                alert(result.message);
-                notifications = [];
-            } catch (error) {
-                console.error("Bildirimler silinemedi:", error);
-                alert("Bildirimler silinemedi.");
-            }
-        }
-    };
-
-    const deleteCurrentPageNotifications = async () => {
-        if (notifications.length === 0) {
-            alert("Silinecek bildirim yok.");
-            return;
-        }
-
-        const notificationIds = notifications.map((n) => n._id);
-
-        try {
-            const response = await fetch(
-                `http://localhost:8000/notifications/batch_delete`,
-                {
-                    method: "DELETE",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({ notification_ids: notificationIds }),
-                },
-            );
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const result = await response.json();
-            notifications = [];
-            alert(result.message);
-        } catch (error) {
-            console.error("Bildirimler silinemedi:", error);
-            alert("Bildirimler silinemedi.");
-        }
-    };
-
-    const closeModal = () => {
-        dispatch("close");
-    };
-
-    const showImage = (imageUrl, id) => {
-        selectedImage = "http://localhost:8000/cameras/output/" + imageUrl;
-        selectedNotificationId = id;
-    };
-
-    const closeImage = () => {
-        selectedImage = null;
-        selectedNotificationId = null;
-    };
-
-    const showNextImage = async () => {
-        const currentIndex = notifications.findIndex(
-            (notification) => notification._id === selectedNotificationId,
-        );
-        if (currentIndex >= 0 && currentIndex < notifications.length - 1) {
-            const nextNotification = notifications[currentIndex + 1];
-            showImage(nextNotification.image_url, nextNotification._id);
-        } else if (currentIndex === notifications.length - 1 && notifications.length === pageSize) {
-            // Fetch the next page and show the first image of the new page
-            await nextPage();
-            if (notifications.length > 0) {
-                const nextNotification = notifications[0];
-                showImage(nextNotification.image_url, nextNotification._id);
-            }
-        }
-    };
-
-    const showPreviousImage = async () => {
-        const currentIndex = notifications.findIndex(
-            (notification) => notification._id === selectedNotificationId,
-        );
-        if (currentIndex > 0) {
-            const previousNotification = notifications[currentIndex - 1];
-            showImage(previousNotification.image_url, previousNotification._id);
-        } else if (currentIndex === 0 && currentPage > 1) {
-            // Fetch the previous page and show the last image of the new page
-            await previousPage();
-            if (notifications.length > 0) {
-                const previousNotification = notifications[notifications.length - 1];
-                showImage(previousNotification.image_url, previousNotification._id);
-            }
-        }
-    };
-
-    const nextPage = async () => {
-        if (notifications.length === pageSize) {
-            if (isFromTable) {
-                await fetchNotificationsBySession(currentPage + 1);
-            } else if (isFromFilter) {
-                await fetchNotificationsByDate(currentPage + 1);
-            }
-        }
-    };
-
-    const previousPage = async () => {
-        if (currentPage > 1) {
-            if (isFromTable) {
-                await fetchNotificationsBySession(currentPage - 1);
-            } else if (isFromFilter) {
-                await fetchNotificationsByDate(currentPage - 1);
-            }
-        }
-    };
-
-    const handleImageClick = (event) => {
-        const { imageUrl, id } = event.detail;
-        showImage(imageUrl, id);
-    };
-
-    const handleNotificationDelete = (event) => {
-        const id = event.detail;
-        deleteNotification(id);
-    };
+  // ESC tuşu ile modalı kapat
+  function handleKeydown(event) {
+    if (event.key === 'Escape') {
+      if (selectedImage) {
+        closeImage();
+      } else {
+        closeModal();
+      }
+    }
+  }
 </script>
 
-<!-- Modal -->
-<div class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg w-11/12 max-w-6xl h-3/4 overflow-auto relative flex flex-col">
-        <!-- Navigation Bar -->
-        <div class="sticky top-0 bg-gray-100 shadow-sm z-10">
-            <div class="flex items-center justify-between py-2 px-3">
-                <div class="flex items-center space-x-1 text-sm">
-                    <button
-                        class="bg-blue-500 hover:bg-blue-700 text-white py-1 px-2 rounded-l flex items-center"
-                        on:click={previousPage}
-                        disabled={currentPage === 1}
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="h-4 w-4"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                        >
-                            <path
-                                fill-rule="evenodd"
-                                d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                                clip-rule="evenodd"
-                            />
-                        </svg>
-                        <span class="ml-1">Önceki</span>
-                    </button>
-                    <span class="bg-gray-200 px-2 py-1 rounded text-xs">
-                        Sayfa {currentPage}
-                    </span>
-                    <button
-                        class="bg-blue-500 hover:bg-blue-700 text-white py-1 px-2 rounded-r flex items-center"
-                        on:click={nextPage}
-                        disabled={notifications.length < pageSize}
-                    >
-                        <span class="mr-1">Sonraki</span>
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="h-4 w-4"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                        >
-                            <path
-                                fill-rule="evenodd"
-                                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                                clip-rule="evenodd"
-                            />
-                        </svg>
-                    </button>
-                </div>
+<svelte:window on:keydown={handleKeydown} />
 
-                <div class="flex space-x-1 text-sm">
-                    <button
-                        class="bg-red-500 hover:bg-red-700 text-white py-1 px-2 rounded flex items-center"
-                        on:click={deleteCurrentPageNotifications}
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="h-4 w-4 mr-1"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                        >
-                            <path
-                                fill-rule="evenodd"
-                                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                                clip-rule="evenodd"
-                            />
-                        </svg>
-                        Sayfayı Sil
-                    </button>
-                    <button
-                        class="bg-red-600 hover:bg-red-800 text-white py-1 px-2 rounded flex items-center"
-                        on:click={deleteAllNotifications}
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="h-4 w-4 mr-1"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                        >
-                            <path
-                                fill-rule="evenodd"
-                                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                                clip-rule="evenodd"
-                            />
-                        </svg>
-                        {isFromTable ? 'Session\'ı Sil' : 'Tümünü Sil'}
-                    </button>
-                    <button
-                        class="bg-gray-500 hover:bg-gray-700 text-white py-1 px-2 rounded"
-                        on:click={closeModal}
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="h-5 w-5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12"
-                            />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </div>
+<div class="w-full h-full p-6 bg-gradient-to-br from-blue-50 to-white overflow-auto">
+  <!-- Başlık -->
+  <div class="mb-6">
+    <h2 class="text-3xl font-bold text-gray-800 mb-2">
+      {#if sessionId}
+        Oturum Bildirimleri
+      {:else if filterParams}
+        Filtrelenmiş Bildirimler
+      {:else}
+        Tüm Bildirimler
+      {/if}
+    </h2>
+    <p class="text-gray-600">
+      {loading ? 'Yükleniyor...' : `Toplam ${notifications.length} bildirim bulundu`}
+    </p>
+  </div>
 
-        <!-- Content -->
-        <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 flex-grow">
-            {#each notifications as notification}
-                <NotificationCard
-                    {notification}
-                    on:imageClick={handleImageClick}
-                    on:delete={handleNotificationDelete}
-                />
-            {/each}
-        </div>
+  {#if loading}
+    <div class="flex justify-center items-center h-64">
+      <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
     </div>
+  {:else if error}
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+      <strong>Hata:</strong> {error}
+    </div>
+  {:else if notifications.length === 0}
+    <div class="text-center py-16">
+      <div class="text-gray-400 mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-24 h-24 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m13-4h-2M7 9h2" />
+        </svg>
+      </div>
+      <h3 class="text-xl text-gray-600 mb-2">Bildirim Bulunamadı</h3>
+      <p class="text-gray-500">Belirtilen kriterlere uygun bildirim bulunmuyor.</p>
+    </div>
+  {:else}
+    <!-- Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
+      {#each paged as n}
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+          <!-- Resim -->
+          <div class="relative">
+            <img
+              src={"http://localhost:8000/cameras/output/" + n.image_url}
+              alt="Detection thumbnail"
+              class="w-full h-48 object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
+              on:click={() => showImage(n.image_url, n._id)}
+            />
+            <div class="absolute top-2 right-2">
+              <span class="bg-blue-600 text-white px-2 py-1 rounded-full text-xs font-medium">
+                {n.camera_id || 'Kamera'}
+              </span>
+            </div>
+          </div>
+
+          <!-- İçerik -->
+          <div class="p-4">
+            <!-- Etiketler -->
+            <div class="flex flex-wrap gap-2 mb-3">
+              {#each n.labels || [] as label}
+                {#each Object.entries(label) as [key, val]}
+                  <LabelTag labelKey={key} labelValue={val} size="sm" />
+                {/each}
+              {/each}
+            </div>
+
+            <!-- Zaman -->
+            <p class="text-gray-600 text-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {new Date(n.time).toLocaleString('tr-TR')}
+            </p>
+          </div>
+        </div>
+      {/each}
+    </div>
+
+    <!-- Pagination -->
+    {#if totalPages > 1}
+      <Pagination {currentPage} {totalPages} onPageChange={p => currentPage = p} />
+    {/if}
+  {/if}
 </div>
 
-<!-- Image Viewer -->
 {#if selectedImage}
-    <div class="fixed top-0 left-0 w-full h-full bg-white flex items-center justify-center z-50">
-        <!-- Kapat butonu sağ üst köşeye taşındı -->
-        <button
-            class="absolute top-4 right-4 z-50 bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center text-gray-700 hover:text-gray-900"
-            on:click={closeImage}
-        >
-            <span class="text-xl">&times;</span>
-        </button>
+  <!-- Büyük Görüntü Modalı -->
+  <div class="fixed inset-0 bg-black/90 flex items-center justify-center z-[60]" on:click={closeImage}>
+    <div class="relative max-w-[95vw] max-h-[95vh]" on:click|stopPropagation>
+      <!-- Kapat Butonu -->
+      <button
+        on:click={closeImage}
+        class="absolute -top-12 right-0 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full backdrop-blur-md transition-all duration-200"
+        aria-label="Resmi Kapat"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
 
-        <button
-            class="absolute left-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0 text-2xl"
-            on:click={showPreviousImage}
-        >
-            ←
-        </button>
+      <!-- Önceki Butonu -->
+      <button
+        on:click={showPreviousImage}
+        class="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-3 rounded-full backdrop-blur-md transition-all duration-200"
+        aria-label="Önceki Resim"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
 
-        <div class="relative bg-white p-4 rounded-lg">
-            <img
-                src={selectedImage}
-                alt="Detected frame"
-                class="max-w-full max-h-[80vh]"
-            />
-        </div>
+      <!-- Resim -->
+      <img
+        src={selectedImage}
+        alt="Detected frame detail"
+        class="max-w-full max-h-[95vh] rounded-lg shadow-2xl"
+      />
 
-        <button
-            class="absolute right-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0 text-2xl"
-            on:click={showNextImage}
-        >
-            →
-        </button>
+      <!-- Sonraki Butonu -->
+      <button
+        on:click={showNextImage}
+        class="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-3 rounded-full backdrop-blur-md transition-all duration-200"
+        aria-label="Sonraki Resim"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
     </div>
+  </div>
 {/if}

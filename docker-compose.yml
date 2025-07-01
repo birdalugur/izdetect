@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   redis:
     image: redis:latest
@@ -48,16 +46,11 @@ services:
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - MONGO_URI=mongodb://root:example@mongodb:27017/
+      - MONGO_URI=mongodb://mongodb:27017/
+
     networks:
       - app_network
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [ gpu ]
+
 
   services:
     build:
@@ -80,13 +73,7 @@ services:
       - MONGO_HOST=mongodb
     networks:
       - app_network
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [ gpu ]
+
 
   frontend:
     image: node:21.7.3

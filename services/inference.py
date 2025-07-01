@@ -12,7 +12,7 @@ class Inference(BaseClass):
         input_queue: str,
         output_queue: str,
         image_bytes_queue: str,
-        batch_size: int = 5,
+        batch_size: int = 1,
         redis_client: redis.Redis = None,
     ):
         super().__init__(redis_client)

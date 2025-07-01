@@ -1,9 +1,16 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./public/**/*.html', "./src/**/*.{html,js,svelte}"],
+  content: ['./public/**/*.html', './src/**/*.{html,js,svelte}'],
   theme: {
-    extend: {},
+    extend: {
+      backdropBlur: {
+        sm: '4px',
+        md: '8px',
+        lg: '16px',
+      },
+    },
   },
-  plugins: [],
-}
-
+  plugins: [
+    // require('@tailwindcss/forms'),
+  ],
+};
