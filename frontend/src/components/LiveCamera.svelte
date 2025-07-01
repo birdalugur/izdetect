@@ -6,17 +6,15 @@
     let cameraList = writable([]);
     let selectedCamera = writable(null);
     let showCameraForm = writable(false);
-    const defaultStreamUrl = "http://localhost:8000/video";
-
+    const defaultStreamUrl = "http://localhost:8000/cameras/video";
     let isFullscreen = false;
-
-    const toggleFullscreen = () => {
-        isFullscreen = !isFullscreen;
-    };
+    let videoSrc = "";
 
     const fetchCameras = async () => {
         try {
-            const response = await fetch("http://localhost:8000/get-cameras");
+            const response = await fetch(
+                "http://localhost:8000/cameras/get-cameras",
+            );
             if (response.ok) {
                 const cameras = await response.json();
                 cameraList.set(cameras);
@@ -27,6 +25,26 @@
         } catch (error) {
             console.error("Kameralar alinirken hata oluştu:", error);
         }
+    };
+
+    const setVideoSrc = () => {
+        const cam = $selectedCamera;
+        videoSrc = cam
+            ? `http://localhost:8000/cameras/video/${cam.id}?t=${Date.now()}`
+            : defaultStreamUrl;
+    };
+
+    $: $selectedCamera, setVideoSrc();
+
+    const handleError = () => {
+        console.warn("Akış koptu. Yeniden bağlanılıyor...");
+        setTimeout(() => {
+            setVideoSrc(); // Bağlantıyı yeniden dene
+        }, 3000);
+    };
+
+    const toggleFullscreen = () => {
+        isFullscreen = !isFullscreen;
     };
 
     const selectCamera = (camera) => {
@@ -46,180 +64,94 @@
     onMount(fetchCameras);
 </script>
 
-<div class="bg-gray-100 p-2 rounded-lg shadow-lg mx-auto mt-2">
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <div class="camera-container" class:isFullscreen>
-        <h4>Cam - 2</h4>
+<div
+    class="bg-gradient-to-b bg-gray-100 p-1 rounded-2xl mx-auto max-w-4xl border border-gray-300 relative overflow-hidden"
+>
+    <!-- Üst gradient gölge efekti -->
+    <div
+        class="absolute top-0 left-0 w-full h-4 bg-gradient-to-b from-gray-300 via-transparent to-transparent rounded-t-2xl z-0"
+    ></div>
+
+    <!-- Video Görüntüsü -->
+    <div
+        class="relative border border-gray-300 rounded-xl overflow-hidden z-10"
+    >
+        <h4
+            class="absolute top-2 left-2 bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-md z-10"
+        >
+            {$selectedCamera?.name || "Cam - 2"}
+        </h4>
+
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
         <img
-            class="camera-view"
-            src={$selectedCamera
-                ? `http://localhost:8000/video/${$selectedCamera.id}`
-                : defaultStreamUrl}
+            class="w-full h-auto aspect-video object-cover cursor-pointer transition-transform duration-200 hover:scale-[1.01]"
+            src={videoSrc}
             alt="IP Kamera Canli Yayini"
             on:click={toggleFullscreen}
+            on:error={handleError}
         />
+
         {#if isFullscreen}
-            <div class="fullscreen-overlay" on:click={toggleFullscreen}>
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
+            <div
+                class="fixed inset-0 bg-black bg-opacity-90 flex justify-center items-center z-[100]"
+                on:click={toggleFullscreen}
+            >
                 <img
-                    class="fullscreen-video"
-                    src={`http://localhost:8000/video/${$selectedCamera.id}`}
+                    class="max-w-[90%] max-h-[90%] rounded-xl"
+                    src={videoSrc}
                     alt="IP Kamera Tam Ekran"
+                    on:error={handleError}
                 />
-                <button class="close-btn" on:click={toggleFullscreen}>✕</button>
+
+                <button
+                    class="absolute top-6 right-6 bg-white/80 hover:bg-white text-black rounded-full px-3 py-1.5 text-lg font-bold transition-all duration-300"
+                    on:click={toggleFullscreen}
+                >
+                    ✕
+                </button>
             </div>
         {/if}
     </div>
 
-    <div class="camera-selector">
+    <!-- Kamera seçim butonları -->
+    <div class="flex flex-wrap justify-center gap-2">
         {#each $cameraList as cam}
             <button
-                class="camera-button {$selectedCamera?.id === cam.id
-                    ? 'active'
-                    : ''}"
+                class={`px-3 py-1.5 text-xs rounded-full font-medium border transition-all duration-300 shadow 
+                ${
+                    $selectedCamera?.id === cam.id
+                        ? "bg-blue-600 text-white border-blue-700 scale-105"
+                        : "bg-gray-100 text-blue-600 border-blue-400 hover:bg-blue-500 hover:text-white hover:border-blue-700 hover:scale-105"
+                }
+                focus:outline-none focus:ring-1 focus:ring-blue-400`}
                 on:click={() => selectCamera(cam)}
             >
-                {cam.id}
+                {cam.name || `Kamera ${cam.id}`}
             </button>
         {/each}
+
+        <!-- Kamera Yönetimi Butonu -->
         <button
-            class="camera-button ml-auto"
-            on:click={toggleCameraForm}>Kamera Yönetimi</button
+            class="px-3 py-1.5 text-xs border border-blue-500 bg-white text-blue-600 rounded-full font-medium shadow hover:bg-blue-500 hover:text-white transition-all duration-300"
+            on:click={toggleCameraForm}
         >
+            Kamera Yönetimi
+        </button>
     </div>
 
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
     {#if $showCameraForm}
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <div class="modal-overlay" on:click={closeCameraForm}>
-            <div class="modal-content" on:click|stopPropagation>
+        <div
+            class="modal-overlay fixed inset-0 bg-black/50 flex justify-center items-center z-[100]"
+            on:click={closeCameraForm}
+        >
+            <div
+                class="bg-white p-5 rounded-2xl w-[400px] max-w-[90%] shadow-2xl border border-gray-200"
+                on:click|stopPropagation
+            >
                 <CamForm />
             </div>
         </div>
     {/if}
 </div>
-
-<style>
-    .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 100;
-    }
-
-    .modal-content {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        width: 400px;
-        max-width: 90%;
-        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .camera-container {
-        position: relative;
-        width: 100%;
-        height: 50%;
-        max-width: 800px;
-        border: 2px solid #ddd;
-        border-radius: 8px;
-        overflow: hidden;
-        text-align: center;
-        padding: 0%;
-        margin: 1px;
-        z-index: 1;
-    }
-
-    .camera-container h4 {
-        margin: 1px;
-        background-color: rgb(187, 201, 211);
-        border-radius: 5px;
-    }
-
-    .camera-view {
-        width: 100%;
-        max-width: 1280px;
-        border-radius: 8px;
-        margin: 0 auto;
-        cursor: pointer;
-    }
-
-    .fullscreen-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: rgba(0, 0, 0, 0.8);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 100;
-    }
-
-    .fullscreen-video {
-        max-width: 90%;
-        max-height: 90%;
-        border-radius: 8px;
-    }
-
-    .close-btn {
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        background: rgba(255, 255, 255, 0.8);
-        border: none;
-        padding: 10px 15px;
-        border-radius: 50%;
-        font-size: 18px;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-
-    .camera-selector {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-        margin-top: 10px;
-    }
-
-    .camera-button {
-    padding: 10px 15px; 
-    border: 2px solid #007bff; 
-    background-color: #f8f9fa; 
-    border-radius: 8px;
-    cursor: pointer; 
-    transition: all 0.3s ease; 
-    font-size: 16px; 
-    font-weight: 500; 
-    color: #007bff; 
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
-}
-
-.camera-button:hover {
-    background-color: #007bff; 
-    color: #ffffff; 
-    border-color: #0056b3; 
-    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15); 
-    transform: translateY(-2px); 
-}
-
-.camera-button:focus {
-    outline: none; 
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.5); 
-}
-
-.camera-button:active {
-    background-color: #0056b3; 
-    transform: translateY(1px); 
-}
-
-
-    .close-btn:hover {
-        background: rgba(255, 255, 255, 1);
-    }
-</style>

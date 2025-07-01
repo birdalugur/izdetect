@@ -6,18 +6,26 @@ from tracking import DetectionProcessor
 from notify import NotifyProcessor
 from multiprocessing import Event
 import os
+import time
+from db import add_detection_session, update_detection_session_end, get_db
 
 REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))
 redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
+# Dictionary to store session_ids for each camera
+camera_sessions = {}
+
+db, _ = get_db()
+
 
 def fetch_camera_urls():
-    return redis_client.lrange("camera_urls", 0, -1)
+    camera_collection = db["cameras"]
+    return [cam["ip"] for cam in camera_collection.find()]
 
 
 def start_tasks():
-    global running, camera_urls
+    global running, camera_urls, camera_sessions
 
     if running.is_set():
         print("Tasks are already running.")
@@ -27,9 +35,18 @@ def start_tasks():
     print(f"Updated camera URLs: {camera_urls}")
 
     running.set()
+    camera_sessions.clear()
 
     for idx, url in enumerate(camera_urls, start=1):
-        frame_producer = FrameProducer(video_source=url, output_queue=f"camera{idx}")
+        camera_id = f"cam-{idx}"
+        # Generate a new session_id for this camera
+        session_id = add_detection_session(camera_id=camera_id)
+        camera_sessions[camera_id] = session_id
+        # Add session to database
+
+        frame_producer = FrameProducer(
+            video_source=url, output_queue=f"camera{idx}", camera_id=camera_id
+        )
         inference = Inference(
             input_queue=f"camera{idx}",
             output_queue=f"inference{idx}",
@@ -41,7 +58,8 @@ def start_tasks():
         notify_processor = NotifyProcessor(
             image_queue=f"camera{idx}_inf",
             detection_queue=f"tracking{idx}",
-            camera_id=idx,
+            camera_id=camera_id,  # Use camera_id as string
+            session_id=session_id,
         )
 
         manager.add_instance(frame_producer)
@@ -54,12 +72,16 @@ def start_tasks():
 
 
 def stop_tasks():
-    global running
+    global running, camera_sessions
     if not running.is_set():
         print("No tasks are running.")
         return
 
     running.clear()
+    # Update end time for each session
+    for camera_id, session_id in camera_sessions.items():
+        update_detection_session_end(session_id)
+    camera_sessions.clear()
     manager.stop_all()
     thread_runner.stop_all()
     redis_client.flushall()
@@ -73,10 +95,20 @@ def redis_listener():
     for message in pubsub.listen():
         if message["type"] == "message":
             command = message["data"].strip().lower()
+            print(f"Received command: {command}")
             if command == "start":
                 start_tasks()
             elif command == "stop":
+                print("Stop command received. Stopping tasks...")
                 stop_tasks()
+            elif command == "disconnected":
+                print(
+                    "Camera disconnected signal received. Restarting tasks after 8 seconds..."
+                )
+                time.sleep(6)
+                stop_tasks()
+                time.sleep(3)
+                start_tasks()
 
 
 if __name__ == "__main__":

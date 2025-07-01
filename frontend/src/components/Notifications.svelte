@@ -3,25 +3,15 @@
     let selectedImage = null;
     let selectedNotificationId = null;
 
+    const MAX_NOTIFICATIONS = 48;
+
     const fetchNotifications = async () => {
         const response = await fetch("http://localhost:8000/notifications");
         const data = await response.json();
-        notifications = data;
+        notifications = data.reverse().slice(0, MAX_NOTIFICATIONS);
     };
 
     fetchNotifications();
-
-    const removeNotification = async (id) => {
-        await fetch(`http://localhost:8000/notifications/${id}/close`, {
-            method: "POST",
-        });
-        notifications = notifications.filter(
-            (notification) => notification._id !== id,
-        );
-        if (id === selectedNotificationId) {
-            closeImage();
-        }
-    };
 
     const removeAllNotifications = async () => {
         const userConfirmed = window.confirm(
@@ -36,7 +26,7 @@
     };
 
     const showImage = (imageUrl, id) => {
-        selectedImage = "http://localhost:8000/output/" + imageUrl;
+        selectedImage = "http://localhost:8000/cameras/output/" + imageUrl;
         selectedNotificationId = id;
     };
 
@@ -65,17 +55,23 @@
         }
     };
 
-    // const notificationSound = new Audio("/sounds/notification.mp3");
+    const notificationSound = new Audio("/sounds/notification.mp3");
     function setupEventSource() {
-        const eventSource = new EventSource("http://localhost:8000/events");
+        const eventSource = new EventSource(
+            "http://localhost:8000/cameras/events",
+        );
 
         eventSource.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                console.log("veri tipi", typeof data);
-                notifications = [data, ...notifications];
 
-                // notificationSound.play();
+                // Yeni bildirimi başa ekle, sonra gerekirse sonuncuyu sil
+                notifications = [data, ...notifications].slice(
+                    0,
+                    MAX_NOTIFICATIONS,
+                );
+
+                notificationSound.play();
             } catch (e) {
                 console.error("Hata: Gelen veri JSON formatında değil!", e);
             }
@@ -91,7 +87,7 @@
     setupEventSource();
 </script>
 
-<div class="flex justify-between items-center p-1.5 border rounded-md">
+<div class="flex justify-between items-center p-1.5 border rounded-md mt-4">
     <button
         class="text-red-600 hover:text-red-800"
         on:click={removeAllNotifications}
@@ -132,7 +128,7 @@
                     {/each}
                 </div>
                 <img
-                    src={"http://localhost:8000/output/" +
+                    src={"http://localhost:8000/cameras/output/" +
                         notification.image_url}
                     alt="Thumbnail"
                     class="w-full rounded-md mt-2"
@@ -148,11 +144,11 @@
 {#if selectedImage}
     <div class="fixed inset-0 flex items-center justify-center bg-white z-50">
         <button
-                class="absolute top-4 right-4 z-50 bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center text-gray-700 hover:text-gray-900"
-                on:click={closeImage}
-            >
+            class="absolute top-4 right-4 z-50 bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center text-gray-700 hover:text-gray-900"
+            on:click={closeImage}
+        >
             <span class="text-xl">&times;</span>
-            </button>
+        </button>
         <button
             class="absolute left-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0"
             on:click={showPreviousImage}
@@ -178,14 +174,5 @@
                 →
             </span>
         </button>
-        <div class="absolute bottom-5 flex gap-4">
-            
-            <button
-                class="bg-red-500 text-white px-4 py-2 rounded-md"
-                on:click={() => removeNotification(selectedNotificationId)}
-            >
-                Remove Notification
-            </button>
-        </div>
     </div>
 {/if}

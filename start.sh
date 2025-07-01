@@ -5,7 +5,7 @@ set -e
 if [ "$1" = "api" ]; then
     echo "Starting API service..."
     cd /app/api
-    python3 app.py
+    uvicorn api.app:app --host 0.0.0.0 --port 8000 --reload
 # Check if we're running the services
 elif [ "$1" = "services" ]; then
     echo "Starting object detection services..."

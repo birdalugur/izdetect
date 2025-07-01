@@ -7,20 +7,24 @@ from base import BaseClass
 
 class FrameProducer(BaseClass):
     def __init__(
-        self, video_source: str, output_queue: str, redis_client: redis.Redis = None
+        self,
+        video_source: str,
+        output_queue: str,
+        camera_id: str,
+        redis_client: redis.Redis = None,
     ):
         self.video_source = video_source
         self.output_queue = output_queue
+        self.camera_id = camera_id  # Yeni: Kamera kimliği
         self.is_connected = False  # Kamera bağlantı durumu
         super().__init__(redis_client)
         self.stop_signal = False
 
-    def __repr__(self):
-        return (
-            f"FrameProducer(output_queue={self.output_queue}, "
-            f"redis_client={self.redis_client}, "
-            f"video_source={self.video_source})"
-        )
+    def stop(self):
+        """Kamera bağlantısını kes ve işlemi durdur."""
+        self.stop_signal = True
+        self.is_connected = False
+        print(f"Stopping FrameProducer for camera {self.camera_id}...")
 
     def run(self, encoding_method="binary"):
         retry_count = 0
@@ -41,6 +45,7 @@ class FrameProducer(BaseClass):
             print(
                 f"Failed to connect to {self.video_source} after {max_retries} retries."
             )
+            self.redis_client.publish("task_control", "disconnected")
             return
 
         not_ret_count = 0
@@ -53,6 +58,7 @@ class FrameProducer(BaseClass):
                 if not_ret_count > 5:
                     print("Camera disconnected, switching to URL wait mode.")
                     self.stop_signal = True
+                    self.redis_client.publish("task_control", "disconnected")
                     break
                 else:
                     continue
@@ -64,11 +70,12 @@ class FrameProducer(BaseClass):
             not_ret_count = 0
 
         cap.release()
-        print("All frames processed. Waiting for a new camera URL...")
 
 
 if __name__ == "__main__":
     processor = FrameProducer(
-        output_queue="camera1", video_source="/home/birdal/izdetect/sahil.mp4"
+        output_queue="camera1",
+        video_source="/home/birdal/izdetect/sahil.mp4",
+        camera_id="deneme",
     )
     processor.run(encoding_method="binary")

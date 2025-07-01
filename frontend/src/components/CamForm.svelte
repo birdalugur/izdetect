@@ -7,7 +7,9 @@
 
     const fetchCameras = async () => {
         try {
-            const response = await fetch("http://localhost:8000/get-cameras");
+            const response = await fetch(
+                "http://localhost:8000/cameras/get-cameras",
+            );
             if (response.ok) {
                 const cameras = await response.json();
                 cameraList.set(
@@ -24,46 +26,42 @@
 
     const addCamera = async () => {
         if (camera.ip && camera.id) {
-            cameraList.update((cameras) => [...cameras, { ...camera }]);
-
-            const response = await fetch("http://localhost:8000/set-cameras", {
+            const response = await fetch("http://localhost:8000/cameras/add", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(get(cameraList)),
+                body: JSON.stringify(camera),
             });
 
             if (response.ok) {
-                alert("Kamera bilgileri başarıyla eklendi ve kaydedildi!");
+                alert("Kamera başarıyla eklendi!");
                 fetchCameras();
             } else {
-                alert("Hata oluştu!");
+                const error = await response.json();
+                alert("Hata: " + error.detail);
             }
 
             camera = { id: "", ip: "" };
         }
     };
 
-    const deleteCamera = async (index) => {
+    const deleteCamera = async (cameraId) => {
         const confirmation = confirm(
             "Bu kamerayı silmek istediğinizden emin misiniz?",
         );
-        if (confirmation) {
-            cameraList.update((cameras) => {
-                cameras.splice(index, 1);
-                return cameras;
-            });
+        if (!confirmation) return;
 
-            const response = await fetch("http://localhost:8000/set-cameras", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(get(cameraList)),
-            });
+        const response = await fetch(
+            `http://localhost:8000/cameras/${cameraId}`,
+            {
+                method: "DELETE",
+            },
+        );
 
-            if (response.ok) {
-                fetchCameras();
-            } else {
-                alert("Silme işlemi sırasında hata oluştu!");
-            }
+        if (response.ok) {
+            alert("Kamera silindi!");
+            fetchCameras();
+        } else {
+            alert("Silme işlemi sırasında hata oluştu!");
         }
     };
 
@@ -115,16 +113,13 @@
         <div>
             <h3 class="text-md font-bold">Kayıtlı Kameralar</h3>
             <ul>
-                {#each $cameraList as cam, index}
-                    <li
-                        class="border p-2 my-2 rounded bg-white flex justify-between items-center"
-                    >
+                {#each $cameraList as cam}
+                    <li class="border p-2 my-2 rounded bg-white flex justify-between items-center">
                         <div>
-                            <span class="font-semibold">{cam.ip.slice(5,20)}</span>
-                            - {cam.id}
+                            <span class="font-semibold">ID:</span> - {cam.id}
                         </div>
                         <button
-                            on:click={() => deleteCamera(index)}
+                            on:click={() => deleteCamera(cam.id)}
                             class="text-red-500 hover:text-red-700 p-1 rounded"
                         >
                             Sil

@@ -2,23 +2,79 @@ import os
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Tuple
+from config import Config
 
-
-MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
-client = MongoClient(MONGO_URI)
-OUTPUT_FOLDER = "data/"
-# client = MongoClient("mongodb:27017") # for docker
+client = MongoClient(Config.MONGO_URI)
 db = client["object_detection"]
 notifications_collection = db["notifications"]
+detection_sessions_collection = db["detection_sessions"]
+
+
+def get_detection_sessions_with_pagination(
+    skip: int = 0, limit: int = 10
+) -> Tuple[List[dict], int]:
+    """
+    Detection sessions koleksiyonundaki verileri sayfalama ile getirir.
+
+    Args:
+        skip: Kaç kayıt atlanacak
+        limit: Kaç kayıt getirileceği
+
+    Returns:
+        Tuple containing (sessions_list, total_count)
+    """
+    total_count = detection_sessions_collection.count_documents({})
+
+    sessions = list(
+        detection_sessions_collection.find().sort("start", -1).skip(skip).limit(limit)
+    )
+
+    for session in sessions:
+        session["_id"] = str(session["_id"])
+        session_id = session["_id"]
+        session["record_count"] = notifications_collection.count_documents(
+            {"session_id": session_id}
+        )
+        for key in ["start", "end"]:
+            if key in session and isinstance(session[key], datetime):
+                session[key] = session[key].isoformat()
+
+    return sessions, total_count
+
+
+def get_all_detection_sessions():
+    """
+    detection_sessions koleksiyonundaki tüm verileri getirir.
+    Bu fonksiyon geriye dönük uyumluluk için korunmuştur.
+    """
+    sessions = list(detection_sessions_collection.find().sort("start", -1))
+    for session in sessions:
+        session["_id"] = str(session["_id"])
+        for key in ["start", "end"]:
+            if key in session and isinstance(session[key], datetime):
+                session[key] = session[key].isoformat()
+    return sessions
+
+
+def get_active_sessions():
+    """
+    Henüz bitiş zamanı olmayan (devam eden) detection oturumlarını getirir.
+    """
+    sessions = list(detection_sessions_collection.find({"end": None}))
+    for session in sessions:
+        session["_id"] = str(session["_id"])
+        if isinstance(session["start"], datetime):
+            session["start"] = session["start"].isoformat()
+    return sessions
 
 
 def get_active_notifications():
     notifications = list(notifications_collection.find({"status": "active"}))
     for notification in notifications:
-        notification["_id"] = str(notification["_id"])  # ObjectId'yi stringe çevir
+        notification["_id"] = str(notification["_id"])
         for key, value in notification.items():
-            if isinstance(value, datetime):  # Eğer datetime ise stringe çevir
+            if isinstance(value, datetime):
                 notification[key] = value.isoformat()
     return notifications
 
@@ -32,10 +88,8 @@ def close_notification(notification_id):
 
 def delete_image(image_filename):
     if image_filename:
-        image_path = os.path.join(OUTPUT_FOLDER, image_filename)
-        print(image_path)
+        image_path = os.path.join(Config.OUTPUT_FOLDER, image_filename)
         if os.path.exists(image_path):
-            print(True)
             os.remove(image_path)
 
 
@@ -48,10 +102,48 @@ def delete_notification(notification_id: str):
         return None
 
     image_filename = notification.get("image_url")
-
     delete_image(image_filename)
-
     return
+
+
+def delete_notifications_by_ids(notification_ids: List[str]):
+    object_ids = [ObjectId(id) for id in notification_ids]
+    notifications = list(notifications_collection.find({"_id": {"$in": object_ids}}))
+
+    for notification in notifications:
+        image_filename = notification.get("image_url")
+        delete_image(image_filename)
+
+    result = notifications_collection.delete_many({"_id": {"$in": object_ids}})
+    return result
+
+
+def delete_detection_session_and_related(session_id: str) -> int:
+    """
+    Bir detection_session kaydını, ilişkili notification'ları ve bunların görsellerini siler.
+
+    Args:
+        session_id: Silinecek detection_session’ın string ObjectId’si
+
+    Returns:
+        Silinen detection_session adedi (0 | 1)
+    """
+    try:
+        obj_id = ObjectId(session_id)
+    except Exception:
+        return 0
+
+    # 1) İlgili notification’ları ve görselleri temizle
+    notifications = list(
+        notifications_collection.find({"session_id": session_id}, {"image_url": 1})
+    )
+    for n in notifications:
+        delete_image(n.get("image_url"))
+    notifications_collection.delete_many({"session_id": session_id})
+
+    # 2) Detection session’ı sil
+    result = detection_sessions_collection.delete_one({"_id": obj_id})
+    return result.deleted_count
 
 
 def delete_all(start_date, end_date):
@@ -59,9 +151,26 @@ def delete_all(start_date, end_date):
         start_date = datetime.fromisoformat(start_date)
     if isinstance(end_date, str):
         end_date = datetime.fromisoformat(end_date)
+
+    # 1. Silinecek notification'ları al
+    notifications = list(
+        notifications_collection.find({"time": {"$gte": start_date, "$lte": end_date}})
+    )
+    deleted_session_ids = {n["session_id"] for n in notifications}
+
+    # 2. Notification'ları ve görselleri sil
+    for n in notifications:
+        delete_image(n.get("image_url"))
     result = notifications_collection.delete_many(
         {"time": {"$gte": start_date, "$lte": end_date}}
     )
+
+    # 3. Her session_id için hâlâ kayıt var mı kontrol et, yoksa session'ı sil
+    for session_id in deleted_session_ids:
+        remaining = notifications_collection.count_documents({"session_id": session_id})
+        if remaining == 0:
+            detection_sessions_collection.delete_one({"_id": ObjectId(session_id)})
+
     return result
 
 
@@ -70,16 +179,6 @@ def clear_all_notifications():
         {"status": "active"}, {"$set": {"status": "closed"}}
     )
     return result.modified_count
-
-
-def get_statistics():
-    notifications = get_active_notifications()
-    object_stats = {}
-    for notification in notifications:
-        for label in notification["labels"]:
-            label_name, count = next(iter(label.items()))
-            object_stats[label_name] = object_stats.get(label_name, 0) + int(count)
-    return {"total_notifications": len(notifications), "object_stats": object_stats}
 
 
 def get_notifications_by_date(
@@ -100,14 +199,10 @@ def get_notifications_by_date(
 
     query = {"time": {"$gte": start_date, "$lte": end_date}}
 
-    # Eğer label filtresi varsa sorguya ekle
     if label_list:
-        # Tüm label'ların var olduğunu kontrol et (string key olarak)
         label_exists_conditions = [
             {f"labels.{label}": {"$exists": True}} for label in label_list
         ]
-
-        # Başka label olmadığını kontrol et (string key olarak)
         not_other_labels_condition = {
             "labels": {
                 "$not": {
@@ -119,7 +214,6 @@ def get_notifications_by_date(
                 }
             }
         }
-
         query["$and"] = [*label_exists_conditions, not_other_labels_condition]
 
     notifications = list(notifications_collection.find(query).skip(skip).limit(limit))
@@ -133,8 +227,78 @@ def get_notifications_by_date(
     return notifications
 
 
+def get_notifications_by_session(
+    session_id: str,
+    skip: int = 0,
+    limit: int = 12,
+    label_list: Optional[List[str]] = None,
+) -> List[dict]:
+    """
+    Belirtilen session_id'ye göre bildirimleri getirir.
+
+    Args:
+        session_id: Bildirimlerin getirileceği session ID'si
+        skip: Kaç kayıt atlanacak
+        limit: Kaç kayıt alınacak
+        label_list: Filtrelenecek label ID'leri listesi (opsiyonel)
+
+    Returns:
+        Belirtilen session_id ile ilişkili bildirimlerin listesi
+    """
+    query = {"session_id": session_id}
+
+    if label_list:
+        label_exists_conditions = [
+            {f"labels.{label}": {"$exists": True}} for label in label_list
+        ]
+        not_other_labels_condition = {
+            "labels": {
+                "$not": {
+                    "$elemMatch": {
+                        "$and": [
+                            {str(label): {"$exists": False}} for label in label_list
+                        ]
+                    }
+                }
+            }
+        }
+        query["$and"] = [*label_exists_conditions, not_other_labels_condition]
+
+    notifications = list(notifications_collection.find(query).skip(skip).limit(limit))
+
+    for notification in notifications:
+        notification["_id"] = str(notification["_id"])
+        for key, value in notification.items():
+            if isinstance(value, datetime):
+                notification[key] = value.isoformat()
+
+    return notifications
+
+
+settings_collection = db["system_settings"]
+
+
+def get_settings():
+    settings_doc = settings_collection.find_one({"_id": "global_settings"})
+    if settings_doc:
+        return {
+            "memory": settings_doc.get("memory", 5),
+            "sensitivity": settings_doc.get("sensitivity", 0.2),
+        }
+    else:
+        # Return defaults if not found
+        return {"memory": 5, "sensitivity": 0.2}
+
+
+def update_settings(memory: int, sensitivity: float):
+    settings_collection.update_one(
+        {"_id": "global_settings"},
+        {"$set": {"memory": memory, "sensitivity": sensitivity}},
+        upsert=True,
+    )
+
+
 if __name__ == "__main__":
-    start = "2025-02-01T00:00:00"
-    end = "2025-02-26T23:59:59"
-    records = get_notifications_by_date(start, end)
-    print(records)
+    ds = get_notifications_by_session("6853c51e0d165f98edfe78f4", 0, 10, ["1", "2"])
+    print(ds)
+    print("length:", len(ds))

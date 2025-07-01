@@ -4,7 +4,7 @@
     let ram = { total: 1, used: 0 };
   
     async function fetchRam() {
-      const response = await fetch("http://localhost:8000/ram");
+      const response = await fetch("http://localhost:8000/system/ram");
       ram = await response.json();
     }
   

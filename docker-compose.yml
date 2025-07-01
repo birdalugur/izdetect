@@ -7,6 +7,8 @@ services:
       - "6379:6379"
     volumes:
       - redis-data:/data
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     restart: unless-stopped
     networks:
       - app_network
@@ -17,12 +19,15 @@ services:
       - "27017:27017"
     volumes:
       - mongodb-data:/data/db
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     restart: unless-stopped
     networks:
       - app_network
     # environment:
-    #   - MONGO_INITDB_ROOT_USERNAME=root
-    #   - MONGO_INITDB_ROOT_PASSWORD=example
+      #   - MONGO_INITDB_ROOT_USERNAME=root
+      #   - MONGO_INITDB_ROOT_PASSWORD=example
+
 
   api:
     build:
@@ -30,8 +35,11 @@ services:
       dockerfile: Dockerfile
     command: python3 api/app.py
     volumes:
+      - ./api:/app/api
+      - ./requirements.txt:/app/requirements.txt
       - ./data:/app/data
-      - ./cameras.json:/app/cameras.json
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     ports:
       - "8000:8000"
     depends_on:
@@ -58,7 +66,10 @@ services:
     command: python3 services/main.py
     volumes:
       - ./data:/app/data
-      - ./cameras.json:/app/cameras.json
+      - ./services:/app/services
+      - ./requirements.txt:/app/requirements.txt
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     depends_on:
       - redis
       - mongodb
@@ -82,6 +93,8 @@ services:
     working_dir: /app
     volumes:
       - ./frontend:/app
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     ports:
       - "3000:3000"
     command: >

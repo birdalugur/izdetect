@@ -2,9 +2,9 @@ import json
 import numpy as np
 import time
 from typing import List
-from threading import Thread
 from sort import Sort
 from base import BaseClass
+from db import get_settings  # import MongoDB-based settings function
 
 
 class LabelConverter:
@@ -34,8 +34,10 @@ class DetectionProcessor(BaseClass):
         self.input_queue = input_queue
         self.output_queue = output_queue
 
-        self.memory = int(self.redis_client.get("tracking:memory") or 5)
-        self.sensitivity = float(self.redis_client.get("tracking:sensitivity") or 0.2)
+        # Initial MongoDB config fetch
+        config = get_settings()
+        self.memory = int(config.get("memory", 5))
+        self.sensitivity = float(config.get("sensitivity", 0.2))
         self.min_hits = int(1 + self.sensitivity * 4)
         self.iou_threshold = 0.5 - (self.sensitivity * 0.4)
 
@@ -46,11 +48,10 @@ class DetectionProcessor(BaseClass):
         )
 
     def run(self):
-        self.settings_thread = Thread(target=self.update_settings, daemon=True)
-        self.settings_thread.start()
         while True:
-            detection_bytes = self.redis_client.rpop(self.input_queue)
-
+            detection_bytes = self.redis_client.rpop(
+                self.input_queue
+            )  # You may keep Redis for queuing
             if detection_bytes:
                 detection = json.loads(detection_bytes)
                 dets = np.array(
@@ -70,7 +71,7 @@ class DetectionProcessor(BaseClass):
                     self.output_queue, *[json.dumps(detection_ids_list).encode()]
                 )
             else:
-                print("Queue is empty, waiting...")
+                print("Queue is empty, Tracking waiting...")
                 time.sleep(2)
 
     @staticmethod
@@ -83,38 +84,7 @@ class DetectionProcessor(BaseClass):
             for row in detection_ids.tolist()
         ]
 
-    def update_settings(self):
-        while True:
-            try:
-                memory = int(self.redis_client.get("tracking:memory") or self.memory)
-                sensitivity = float(
-                    self.redis_client.get("tracking:sensitivity") or self.sensitivity
-                )
-
-                if memory != self.memory or sensitivity != self.sensitivity:
-                    self.memory = memory
-                    self.sensitivity = sensitivity
-                    self.min_hits = int(1 + sensitivity * 4)
-                    self.iou_threshold = 0.5 - (sensitivity * 0.4)
-
-                    # Tracker'ı güncelle
-                    self.tracker = Sort(
-                        max_age=self.memory,
-                        min_hits=self.min_hits,
-                        iou_threshold=self.iou_threshold,
-                    )
-
-                    print(
-                        f"Global settings updated: memory={memory}, sensitivity={sensitivity}"
-                    )
-            except Exception as e:
-                print(f"Error watching settings: {e}")
-
-            time.sleep(3)
-
 
 if __name__ == "__main__":
-    # from runer import ParallelRunner
-
-    processor1 = DetectionProcessor(input_queue="inference1", output_queue="tracking1")
-    processor1.run()
+    processor = DetectionProcessor(input_queue="inference1", output_queue="tracking1")
+    processor.run()

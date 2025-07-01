@@ -1,6 +1,6 @@
 <script>
+    import { onMount } from "svelte";
     import { cameraUrls, clearCameraUrls } from "./store";
-
     export let addMessage;
 
     let isStarting = false;
@@ -11,20 +11,35 @@
     let memoryValue = 5;
     let sensitivityValue = 0.2;
 
+    // Fetch settings from backend on mount
+    onMount(async () => {
+        try {
+            const res = await fetch(
+                "http://localhost:8000/system/get-settings",
+            );
+            const data = await res.json();
+            if (res.ok) {
+                memoryValue = data.memory ?? memoryValue;
+                sensitivityValue = data.sensitivity ?? sensitivityValue;
+            } else {
+                console.error("Failed to fetch settings:", data.detail);
+            }
+        } catch (err) {
+            console.error("Fetch error:", err);
+        }
+    });
+
     const startRealTimeDetection = async () => {
         await updateSettings();
         isStarting = true;
         startMessage = "Starting real-time video processing...";
         addMessage(startMessage);
-
         try {
             const response = await fetch(
-                "http://localhost:8000/start-detection",
+                "http://localhost:8000/cameras/start-detection",
                 {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         memory: memoryValue,
                         sensitivity: sensitivityValue,
@@ -32,13 +47,11 @@
                 },
             );
             const data = await response.json();
+            startMessage = response.ok
+                ? data.message
+                : `Could not start: ${data.error || response.statusText}`;
             if (response.ok) {
-                startMessage = data.message;
-                cameraUrls.set({
-                    cameraUrl2: data.default_camera_url,
-                });
-            } else {
-                startMessage = `Could not start: ${data.error || response.statusText}`;
+                cameraUrls.set({ cameraUrl2: data.default_camera_url });
             }
         } catch (error) {
             startMessage = `Error: ${error.message}`;
@@ -52,20 +65,17 @@
         isStopping = true;
         stopMessage = "Stopping frame producer...";
         addMessage(stopMessage);
-
         try {
             const response = await fetch(
-                "http://localhost:8000/stop-detection",
+                "http://localhost:8000/cameras/stop-detection",
                 {
                     method: "POST",
                 },
             );
             const data = await response.json();
-            if (response.ok) {
-                stopMessage = data.message;
-            } else {
-                stopMessage = `Could not stop: ${data.error || response.statusText}`;
-            }
+            stopMessage = response.ok
+                ? data.message
+                : `Could not stop: ${data.error || response.statusText}`;
         } catch (error) {
             stopMessage = `Error: ${error.message}`;
         } finally {
@@ -73,11 +83,10 @@
             addMessage(stopMessage);
         }
     };
-
     const updateSettings = async () => {
         try {
             const response = await fetch(
-                "http://localhost:8000/update-settings",
+                "http://localhost:8000/system/update-settings",
                 {
                     method: "POST",
                     headers: {
@@ -89,13 +98,11 @@
                     }),
                 },
             );
-
             if (!response.ok) {
                 throw new Error(
                     `Failed to update settings: ${response.statusText}`,
                 );
             }
-
             const data = await response.json();
             console.log(data.message);
         } catch (error) {

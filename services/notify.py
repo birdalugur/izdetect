@@ -9,18 +9,19 @@ from db import Record, add_notification
 from redis_client import publish_to_redis
 from base import BaseClass
 
-
 class NotifyProcessor(BaseClass):
     def __init__(
         self,
         image_queue: str,
         detection_queue: str,
-        camera_id: int,
+        camera_id: str,
+        session_id: str,
         redis_client: redis.Redis=None,
     ):
         self.image_queue = image_queue
         self.detection_queue = detection_queue
         self.camera_id = camera_id
+        self.session_id = session_id
         super().__init__(redis_client)
         self.notified_object_ids = set()
         self.selected_label = {1, 2, 3, 4, 6, 8, 18, 19, 20, 21}
@@ -66,7 +67,7 @@ class NotifyProcessor(BaseClass):
 
                     # Use frame count and timestamp for notifications
                     frame_count = count
-                    frame_time = datetime.timestamp(datetime.now())
+                    frame_time = datetime.now().isoformat()
 
                     record = Record(
                         frame_count=frame_count,
@@ -74,6 +75,7 @@ class NotifyProcessor(BaseClass):
                         image_url=unique_id,
                         time=frame_time,
                         camera_id=self.camera_id,
+                        session_id=self.session_id,
                     )
                     inserted_data = add_notification(record=record)
                     publish_to_redis(inserted_data)

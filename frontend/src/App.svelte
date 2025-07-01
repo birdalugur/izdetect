@@ -1,9 +1,7 @@
 <script>
-    import Control from "./components/Control.svelte";
+    import LeftPanel from "./components/LeftPanel.svelte";
     import Notifications from "./components/Notifications.svelte";
-    import LiveCamera from "./components/LiveCamera.svelte";
-    import Ram from "./components/Ram.svelte";
-    import FilterNotifications from "./components/FilterNotifications.svelte";
+    import MiddlePanel from "./components/MiddlePanel.svelte";
 
     let messages = [];
 
@@ -12,19 +10,15 @@
     };
 </script>
 
-<main class="flex h-[99vh] bg-gray-100">
-    <div class="w-1/5 bg-white p-5 flex flex-col gap-5 overflow-y-auto">
-        <Control {addMessage} />
-        <Ram />
-        <FilterNotifications />
-        <!-- <Messages {messages} /> -->
-        <!-- <Timeline /> -->
+<main class="flex h-[99vh] bg-white gap-x-4">
+    <div class="w-1/5">
+        <LeftPanel {addMessage} />
     </div>
-    <div class="w-2/5 p-2 bg-white">
-        <LiveCamera />
-        <!-- <Calender /> -->
+    <div class="w-2/5">
+        <MiddlePanel />
     </div>
-    <div class="w-2/5 p-5 bg-gray-50 overflow-y-auto flex flex-col gap-2.5">
+    <div class="w-2/5 p-2 bg-gray-100 overflow-y-auto flex flex-col rounded-lg mb-4">
         <Notifications />
     </div>
 </main>
+
