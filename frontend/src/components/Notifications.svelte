@@ -55,7 +55,7 @@
         }
     };
 
-    // const notificationSound = new Audio("/sounds/notification.mp3");
+    const notificationSound = new Audio("/sounds/notification.mp3");
     function setupEventSource() {
         const eventSource = new EventSource(
             "http://localhost:8000/cameras/events",
@@ -71,7 +71,7 @@
                     MAX_NOTIFICATIONS,
                 );
 
-                // notificationSound.play();
+                notificationSound.play();
             } catch (e) {
                 console.error("Hata: Gelen veri JSON formatında değil!", e);
             }
