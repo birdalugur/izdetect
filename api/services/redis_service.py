@@ -1,21 +1,22 @@
-# app/services/redis_service.py
 import json
-import redis
-import aioredis
+from redis import Redis as SyncRedis
+from redis.asyncio import Redis as AsyncRedis
 from typing import AsyncGenerator
 from fastapi import Request
 from config import Config
 
 class RedisService:
     def __init__(self):
-        self.client = redis.StrictRedis(
+        self.client = SyncRedis(
             host=Config.REDIS_HOST, port=Config.REDIS_PORT, decode_responses=True
         )
-        self.async_client = None
+        self.async_client: AsyncRedis | None = None
 
-    async def get_async_client(self):
+    async def get_async_client(self) -> AsyncRedis:
         if self.async_client is None:
-            self.async_client = await aioredis.from_url(f"redis://{Config.REDIS_HOST}:{Config.REDIS_PORT}")
+            self.async_client = AsyncRedis(
+                host=Config.REDIS_HOST, port=Config.REDIS_PORT, decode_responses=True
+            )
         return self.async_client
 
     def publish(self, channel: str, message: str):
@@ -24,6 +25,9 @@ class RedisService:
     def set(self, key: str, value: str):
         self.client.set(key, value)
 
+    def get(self, key: str) -> str | None:
+        return self.client.get(key)
+
     def delete(self, key: str):
         self.client.delete(key)
 
@@ -31,10 +35,10 @@ class RedisService:
         self.client.rpush(key, *values)
 
     async def event_generator(self, request: Request, channel: str, map_labels) -> AsyncGenerator[str, None]:
-        redis = await self.get_async_client()
-        pubsub = redis.pubsub()
+        redis_client = await self.get_async_client()
+        pubsub = redis_client.pubsub()
+        await pubsub.subscribe(channel)
         try:
-            await pubsub.subscribe(channel)
             while True:
                 if await request.is_disconnected():
                     break
@@ -46,4 +50,4 @@ class RedisService:
         finally:
             await pubsub.unsubscribe(channel)
             await pubsub.close()
-            await redis.close()
+            await redis_client.close()
