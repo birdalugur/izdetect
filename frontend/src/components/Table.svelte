@@ -1,240 +1,205 @@
+<!-- src/components/Table.svelte -->
 <script>
-    import { writable } from "svelte/store";
-    import { onMount } from "svelte";
-    import NotificationModal from "./NotificationModal.svelte";
+  import { onMount } from 'svelte';
+  import { writable } from 'svelte/store';
+  import GlassCard from './GlassCard.svelte';
+  import NotificationModal from './NotificationModal.svelte';
+  import { modalStore } from './store.js';
+  import Pagination from './Pagination.svelte';
+  import toast from 'svelte-french-toast';
 
-    /* ---------- Durum ---------- */
-    const detectionRecords = writable([]);
-    let currentPage = 1;
-    const recordsPerPage = 4;
-    let totalRecords = 0;
+  const detectionRecords = writable([]);
+  let currentPage = 1;
+  const recordsPerPage = 3;
+  let totalRecords = 0;
 
-    /* ---------- Türetilen değerler ---------- */
-    $: totalPages = Math.ceil(totalRecords / recordsPerPage);
-    $: pageNumbers = (() => {
-        if (!totalPages) return [];
-        const max = 5;
-        let start = Math.max(1, currentPage - Math.floor(max / 2));
-        let end = Math.min(totalPages, start + max - 1);
-        if (end - start + 1 < max) start = Math.max(1, end - max + 1);
-        return Array.from({ length: end - start + 1 }, (_, i) => start + i);
-    })();
+  $: totalPages = Math.ceil(totalRecords / recordsPerPage);
+  $: pageNumbers = (() => {
+    if (!totalPages) return [];
+    const max = 5;
+    let start = Math.max(1, currentPage - Math.floor(max / 2));
+    let end = Math.min(totalPages, start + max - 1);
+    if (end - start + 1 < max) start = Math.max(1, end - max + 1);
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  })();
 
-    /* ---------- Veri çekme ---------- */
-    const fetchDetectionRecords = async () => {
-        const skip = (currentPage - 1) * recordsPerPage;
-        try {
-            const r = await fetch(
-                `http://localhost:8000/detection-sessions?skip=${skip}&limit=${recordsPerPage}`,
-            );
-            if (!r.ok) throw new Error(r.status);
-            const d = await r.json();
-            detectionRecords.set(d.records);
-            totalRecords = d.total;
-        } catch (err) {
-            console.error("Fetch error:", err);
-        }
-    };
+  const fetchDetectionRecords = async () => {
+    const skip = (currentPage - 1) * recordsPerPage;
+    try {
+      const res = await fetch(
+        `http://localhost:8000/detection-sessions?skip=${skip}&limit=${recordsPerPage}`,
+      );
+      if (!res.ok) throw new Error(res.statusText);
+      const data = await res.json();
+      detectionRecords.set(data.records);
+      totalRecords = data.total;
+    } catch (e) {
+      console.error('Veri alınamadı:', e);
+    }
+  };
 
-    /* ---------- Silme ---------- */
-    const deleteSession = async (id) => {
-        const ok = confirm(
-            "Bu oturumu ve ilişkili tüm bildirimleri silmek istediğinize emin misiniz?",
-        );
-        if (!ok) return;
+  onMount(fetchDetectionRecords);
+  $: currentPage, fetchDetectionRecords();
 
-        try {
-            const res = await fetch(
-                `http://localhost:8000/detection-sessions/${id}`,
-                { method: "DELETE" },
-            );
-            if (!res.ok) throw new Error(res.status);
-            await fetchDetectionRecords(); // listeyi tazele
-        } catch (err) {
-            console.error("Deletion error:", err);
-            alert("Kayıt silinemedi.");
-        }
-    };
+  const openImages = rec => {
+    modalStore.set({
+      isOpen: true,
+      component: NotificationModal,
+      props: {
+        sessionId: rec._id
+      }
+    });
+  };
 
-    onMount(fetchDetectionRecords);
-    $: currentPage, fetchDetectionRecords(); // Sayfa değişince yeniden çek
+  const deleteSession = async id => {
+    const confirmed = window.confirm('Bu oturumu ve ilişkili tüm bildirimleri silmek istediğinize emin misiniz?');
+    if (!confirmed) {
+      toast.dismiss();
+      toast.error('Oturum silme işlemi iptal edildi.', { duration: 3000, position: 'top-right' });
+      return;
+    }
+    try {
+      const res = await fetch(
+        `http://localhost:8000/detection-sessions/${id}`,
+        { method: 'DELETE' }
+      );
+      if (!res.ok) throw new Error(res.statusText);
+      fetchDetectionRecords();
+    } catch (e) {
+      console.error('Silme hatası:', e);
+      toast.dismiss();
+      toast.error('Kayıt silinemedi.', { duration: 3000, position: 'top-right' });
+    }
+  };
 
-    /* ---------- Yardımcılar ---------- */
-    const fmt = (iso, type = "date") => {
-        const d = new Date(iso);
-        return type === "date"
-            ? d.toISOString().split("T")[0]
-            : d.toLocaleTimeString("tr-TR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  second: "2-digit",
-                  hour12: false,
-              });
-    };
+  const goToPage = p => {
+    if (p >= 1 && p <= totalPages) currentPage = p;
+  };
 
-    /* ---------- Modal kontrolü ---------- */
-    let showModal = false;
-    let modalSessionId = null;
+  const fmt = (iso, type = 'date') => {
+    const d = new Date(iso);
+    return d.toLocaleString('tr-TR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+  };
 
-    const openImages = (r) => {
-        modalSessionId = r._id;
-        showModal = true;
-    };
+  let showModal = false;
+  let modalSessionId = null;
+  const closeModal = () => {
+    showModal = false;
+    modalSessionId = null;
+  };
 
-    const closeModal = () => {
-        showModal = false;
-        modalSessionId = null;
-    };
-
-    /* ---------- Sayfalama ---------- */
-    const goToPage = (p) => p >= 1 && p <= totalPages && (currentPage = p);
-    const nextPage = () => goToPage(currentPage + 1);
-    const prevPage = () => goToPage(currentPage - 1);
+  const nextPage = () => goToPage(currentPage + 1);
+  const prevPage = () => goToPage(currentPage - 1);
 </script>
 
-<div
-    class="relative max-h-[70vh] flex flex-col bg-gray-100 p-4 rounded-lg mt-4 w-full"
->
-    <h2 class="text-xl font-bold text-gray-800 mb-3">Detection History</h2>
+<GlassCard className="w-full h-auto p-4 flex flex-col">
+  <!-- Başlık -->
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-semibold text-black-900">Algılama Geçmişi</h2>
+    <span class="text-sm text-gray-700">Toplam: {totalRecords}</span>
+  </div>
 
-    <div class="mb-3 flex justify-end items-center text-sm text-gray-600">
-        Total: {totalRecords} records
-    </div>
-
-    <!-- Tablo -->
-    <div class="overflow-x-auto overflow-y-auto h-full max-h-[300px]">
-        <table class="w-full min-w-full table-auto border-collapse bg-white">
-            <thead class="sticky top-0 bg-gray-200 z-1">
-                <tr>
-                    <th class="px-4 py-2 text-left text-gray-600 border-b"
-                        >Camera ID</th
-                    >
-                    <th class="px-4 py-2 text-left text-gray-600 border-b"
-                        >Start Time</th
-                    >
-                    <th class="px-4 py-2 text-left text-gray-600 border-b"
-                        >End Time</th
-                    >
-                    <th class="px-4 py-2 text-left text-gray-600 border-b"
-                        >Record Count</th
-                    >
-                    <th class="px-4 py-2 text-left text-gray-600 border-b"
-                        >Action</th
-                    >
-                    <th class="px-4 py-2 text-left text-gray-600 border-b"
-                        >Delete</th
-                    >
-                </tr>
-            </thead>
-            <tbody>
-                {#each $detectionRecords as rec}
-                    <tr class="border-b hover:bg-gray-50">
-                        <td class="px-4 py-2">{rec.camera_id}</td>
-                        <td class="px-4 py-2"
-                            >{new Date(rec.start).toLocaleString("tr-TR")}</td
-                        >
-                        <td class="px-4 py-2">
-                            {rec.end
-                                ? new Date(rec.end).toLocaleString("tr-TR")
-                                : "Ongoing"}
-                        </td>
-                        <td class="px-4 py-2">
-                            {rec.record_count != null
-                                ? rec.record_count
-                                : "Ongoing"}
-                        </td>
-                        <td class="px-4 py-2">
-                            <button
-                                on:click={() => openImages(rec)}
-                                disabled={!rec.start || !rec.end}
-                                class={`py-1 px-3 rounded-lg text-white font-semibold transition ${
-                                    rec.start && rec.end
-                                        ? "bg-blue-500 hover:bg-blue-600"
-                                        : "bg-gray-400 cursor-not-allowed"
-                                }`}
-                            >
-                                Open
-                            </button>
-                        </td>
-                        <td class="px-4 py-2">
-                            <button
-                                on:click={() => deleteSession(rec._id)}
-                                class="py-1 px-3 rounded-lg text-white font-semibold bg-red-500 hover:bg-red-600 transition"
-                            >
-                                Delete
-                            </button>
-                        </td>
-                    </tr>
-                {/each}
-
+  <!-- Tablo - Flex-1 ile kalan alanı kapla -->
+  <div class="flex-1 flex flex-col min-h-0">
+    <div class="overflow-hidden flex-1">
+      <table class="w-full table-fixed">
+        <thead>
+          <tr class="bg-white/30 dark:bg-white-700/50">
+            <th class="w-[15%] px-3 py-2 text-left text-white-900 dark:text-white-200 font-medium text-sm border-b border-white-300 dark:border-white-600">Kamera ID</th>
+            <th class="w-[25%] px-3 py-2 text-left text-white-900 dark:text-white-200 font-medium text-sm border-b border-white-300 dark:border-white-600">Başlangıç Zamanı</th>
+            <th class="w-[25%] px-3 py-2 text-left text-white-900 dark:text-white-200 font-medium text-sm border-b border-white-300 dark:border-white-600">Bitiş Zamanı</th>
+            <th class="w-[15%] px-3 py-2 text-left text-white-900 dark:text-white-200 font-medium text-sm border-b border-white-300 dark:border-white-600">Kayıt Sayısı</th>
+            <th class="w-[10%] px-3 py-2 text-center text-white-900 dark:text-white-200 font-medium text-sm border-b border-white-300 dark:border-white-600">Görüntüle</th>
+            <th class="w-[10%] px-3 py-2 text-center text-white-900 dark:text-white-200 font-medium text-sm border-b border-white-300 dark:border-white-600">Sil</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/20 dark:divide-slate-600/40">
+          {#each $detectionRecords as rec}
+            <tr class="h-16 hover:bg-white/20 dark:hover:bg-slate-700/30 transition-colors">
+              <td class="px-3 py-2 text-sm truncate text-white-700 dark:text-white-300">{rec.camera_id}</td>
+              <td class="px-3 py-2 text-sm text-white-700 dark:text-white-300">
+                {rec.start ? fmt(rec.start) : '-'}
+              </td>
+              <td class="px-3 py-2 text-sm text-white-700 dark:text-white-300">
+                {rec.end ? fmt(rec.end) : 'Devam Ediyor'}
+              </td>
+              <td class="px-3 py-2 text-sm text-center text-white-700 dark:text-white-300">
+                {rec.record_count != null ? rec.record_count : '-'}
+              </td>
+              <td class="px-3 py-2 text-center">
+                <button
+                  on:click={() => openImages(rec)}
+                  disabled={!rec.start || !rec.end}
+                  class={`p-2 rounded-full transition-colors
+                    ${rec.start && rec.end ? 'bg-indigo-100 hover:bg-indigo-200 text-indigo-800' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                  aria-label="Görüntüle"
+                  title={rec.end ? 'Bildirimleri Görüntüle' : 'Henüz tamamlanmamış'}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg"
+                       class="w-4 h-4"
+                       fill="none"
+                       viewBox="0 0 24 24"
+                       stroke="currentColor"
+                       stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268
+                             2.943 9.542 7c-1.274 4.057-5.065 7-9.542
+                             7s-8.268-2.943-9.542-7z" />
+                  </svg>
+                </button>
+              </td>
+              <td class="px-3 py-2 text-center">
+                <button
+                  on:click={() => deleteSession(rec._id)}
+                  class="p-2 rounded-full bg-red-100 hover:bg-red-200 text-red-700 transition-colors"
+                  aria-label="Sil"
+                  title="Oturumu Sil"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg"
+                       class="w-4 h-4"
+                       fill="none"
+                       viewBox="0 0 24 24"
+                       stroke="currentColor"
+                       stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138
+                             21H7.862a2 2 0 01-1.995-1.858L5
+                             7m5 4v6m4-6v6M1 7h22" />
+                  </svg>
+                </button>
+              </td>
+            </tr>
+          {/each}
+          
+          <!-- Boş satırlar ekleyerek tablonun yüksekliğini sabit tutuyoruz -->
+          {#each Array(Math.max(0, 3 - $detectionRecords.length)) as _}
+            <tr class="h-16">
+              <td colspan="6" class="px-3 py-2 text-center text-gray-400 dark:text-slate-500">
                 {#if $detectionRecords.length === 0}
-                    <tr>
-                        <td
-                            colspan="6"
-                            class="px-4 py-8 text-center text-gray-500"
-                        >
-                            No detection records found
-                        </td>
-                    </tr>
+                  Kayıt bulunamadı.
+                {:else}
+                  &nbsp;
                 {/if}
-            </tbody>
-        </table>
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
     </div>
+  </div>
 
-    <!-- Sayfalama -->
-    {#if totalPages > 1}
-        <div class="mt-3 flex justify-between items-center flex-wrap gap-2">
-            <div class="text-sm text-gray-600">
-                Showing {(currentPage - 1) * recordsPerPage + 1}
-                to {Math.min(currentPage * recordsPerPage, totalRecords)}
-                of {totalRecords} entries
-            </div>
-
-            <div class="flex items-center flex-wrap gap-2">
-                <button
-                    on:click={prevPage}
-                    disabled={currentPage === 1}
-                    class={`px-3 py-1 rounded-md text-sm font-medium transition ${
-                        currentPage === 1
-                            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                            : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
-                    }`}
-                >
-                    Previous
-                </button>
-
-                {#each pageNumbers as n}
-                    <button
-                        on:click={() => goToPage(n)}
-                        class={`px-3 py-1 rounded-md text-sm font-medium transition ${
-                            currentPage === n
-                                ? "bg-blue-500 text-white"
-                                : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
-                        }`}
-                    >
-                        {n}
-                    </button>
-                {/each}
-
-                <button
-                    on:click={nextPage}
-                    disabled={currentPage === totalPages}
-                    class={`px-3 py-1 rounded-md text-sm font-medium transition ${
-                        currentPage === totalPages
-                            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                            : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
-                    }`}
-                >
-                    Next
-                </button>
-            </div>
-        </div>
-    {/if}
-</div>
-
-{#if showModal}
-    <NotificationModal
-        sessionId={modalSessionId}
-        on:close={closeModal}
-    />
-{/if}
+  <!-- Pagination - Alt kısımda sabit -->
+  <div class="mt-4 pt-4 border-t border-white-200 dark:border-slate-600/40">
+    <Pagination {currentPage} {totalPages} onPageChange={goToPage} />
+  </div>
+</GlassCard>

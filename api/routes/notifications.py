@@ -14,6 +14,8 @@ from db import (
     delete_all,
     delete_notifications_by_ids,
     get_notifications_by_session,
+    get_notification_by_id,  # Yeni import
+    get_notifications_around_id,  # Yeni import
 )
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
@@ -21,15 +23,6 @@ router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
 class BatchDeleteRequest(BaseModel):
     notification_ids: List[str]
-
-
-@router.post("/{notification_id}/close")
-async def close_notification_route(
-    notification_id: str = Path(..., description="The ID of the notification to close"),
-):
-    if close_notification(notification_id) == 0:
-        raise HTTPException(status_code=404, detail="Notification not found")
-    return {"message": "Notification closed successfully"}
 
 
 @router.get("/")
@@ -50,18 +43,30 @@ async def get_notifications_by_date_endpoint(
     labels: Optional[str] = None,
 ):
     try:
-        label_list = [int(label) for label in labels.split(",")] if labels else None
-        notifications = get_notifications_by_date(
+        # Boş string kontrolü ekle
+        if labels and labels.strip():
+            label_list = [str(label.strip()) for label in labels.split(",") if label.strip()]
+        else:
+            label_list = None
+            
+        notifications, total_count = get_notifications_by_date(
             start_date, end_date, skip, limit, label_list
         )
         notifications = [
             map_labels(notification, Config.LABEL_MAP) for notification in notifications
         ]
-        return JSONResponse(notifications)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid label format: {e}")
+        return JSONResponse({
+            "notifications": notifications,
+            "total": total_count,
+            "skip": skip,
+            "limit": limit
+        })
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # Debug için detaylı hata mesajı
+        import traceback
+        print(f"Error in by_date endpoint: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @router.get("/by_session/{session_id}")
@@ -72,7 +77,12 @@ async def get_notifications_by_session_endpoint(
     labels: Optional[str] = None,
 ):
     try:
-        label_list = [int(label) for label in labels.split(",")] if labels else None
+        # Boş string kontrolü ekle
+        if labels and labels.strip():
+            label_list = [str(label.strip()) for label in labels.split(",") if label.strip()]
+        else:
+            label_list = None
+            
         notifications = get_notifications_by_session(
             session_id, skip, limit, label_list
         )
@@ -80,10 +90,18 @@ async def get_notifications_by_session_endpoint(
             map_labels(notification, Config.LABEL_MAP) for notification in notifications
         ]
         return JSONResponse(notifications)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid label format: {e}")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # Debug için detaylı hata mesajı
+        import traceback
+        print(f"Error in by_session endpoint: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@router.post("/clear-all")
+async def clear_all_notifications_route():
+    modified_count = clear_all_notifications()
+    return {"message": f"{modified_count} notifications cleared"}
 
 
 @router.delete("/by_date")
@@ -106,6 +124,38 @@ async def delete_notifications_batch(request: BatchDeleteRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/{notification_id}")
+async def get_notification_route(notification_id: str):
+    """Gets a single notification by ID."""
+    notification = get_notification_by_id(notification_id)
+    if notification is None:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    notification = map_labels(notification, Config.LABEL_MAP)
+    return JSONResponse(notification)
+
+
+@router.get("/{notification_id}/around")
+async def get_notifications_around_route(
+    notification_id: str,
+    limit: int = 3,
+):
+    """Gets notifications around a specific notification ID."""
+    notifications = get_notifications_around_id(notification_id, limit)
+    if not notifications:
+        raise HTTPException(status_code=404, detail="Notifications not found")
+    notifications = [map_labels(n, Config.LABEL_MAP) for n in notifications]
+    return JSONResponse(notifications)
+
+
+@router.post("/{notification_id}/close")
+async def close_notification_route(
+    notification_id: str = Path(..., description="The ID of the notification to close"),
+):
+    if close_notification(notification_id) == 0:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    return {"message": "Notification closed successfully"}
+
+
 @router.delete("/{notification_id}")
 async def delete_notification_route(notification_id: str):
     """Deletes a notification by ID."""
@@ -113,9 +163,3 @@ async def delete_notification_route(notification_id: str):
     if result is not None:
         return {"message": "Notification deleted successfully"}
     raise HTTPException(status_code=404, detail="Notification not found")
-
-
-@router.post("/clear-all")
-async def clear_all_notifications_route():
-    modified_count = clear_all_notifications()
-    return {"message": f"{modified_count} notifications cleared"}

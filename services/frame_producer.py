@@ -28,7 +28,7 @@ class FrameProducer(BaseClass):
 
     def run(self, encoding_method="binary"):
         retry_count = 0
-        max_retries = 5
+        max_retries = 6
 
         while retry_count < max_retries:
             cap = cv2.VideoCapture(self.video_source)

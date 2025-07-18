@@ -1,132 +1,190 @@
 <script>
-    import { writable, get } from "svelte/store";
+  import { onMount, createEventDispatcher } from 'svelte';
+  import { writable, get } from 'svelte/store';
+  import GlassCard from './GlassCard.svelte';
+  import toast, { Toaster } from 'svelte-french-toast';
 
-    export const cameraList = writable([]);
-    let camera = { ip: "", port: "", username: "", password: "" };
-    let showAddCamera = writable(true);
+  export let onCameraAdded = null;
+  
+  const dispatch = createEventDispatcher();
+  const cameraList = writable([]);
+  let camera = { id: '', ip: '' };
+  const showAdd = writable(true);
 
-    const fetchCameras = async () => {
-        try {
-            const response = await fetch(
-                "http://localhost:8000/cameras/get-cameras",
-            );
-            if (response.ok) {
-                const cameras = await response.json();
-                cameraList.set(
-                    cameras.map((cam) => ({
-                        id: cam.id,
-                        ip: cam.ip,
-                    })),
-                );
-            }
-        } catch (error) {
-            console.error("Kameralar alinirken hata oluştu:", error);
-        }
-    };
+  // Kameraları getir
+  const fetchCameras = async () => {
+    try {
+      const res = await fetch('http://localhost:8000/cameras/get-cameras');
+      if (res.ok) cameraList.set(await res.json());
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
-    const addCamera = async () => {
-        if (camera.ip && camera.id) {
-            const response = await fetch("http://localhost:8000/cameras/add", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(camera),
-            });
+  const addCamera = async () => {
+    if (!camera.id || !camera.ip) {
+      toast.dismiss();
+      toast.error('Lütfen kamera ID ve IP adresini girin.', { duration: 3000, position: 'top-right' });
+      return;
+    }
+    
+    try {
+      const res = await fetch('http://localhost:8000/cameras/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(camera),
+      });
+      
+      if (res.ok) {
+        const cameraId = camera.id;
+        camera = { id: '', ip: '' };
+        await fetchCameras();
+        toast.dismiss();
+        toast.success(`Kamera "${cameraId}" başarıyla eklendi!`, { duration: 3000, position: 'top-right' });
+        
+        // Modal'ı kapat
+        if (onCameraAdded) onCameraAdded();
+        dispatch('close');
+      } else {
+        const error = await res.text();
+        toast.dismiss();
+        toast.error(`Kamera ekleme hatası: ${error}`, { duration: 3000, position: 'top-right' });
+      }
+    } catch (e) {
+      console.error('Kamera ekleme hatası:', e);
+      toast.dismiss();
+      toast.error('Kamera eklenirken bir hata oluştu.', { duration: 3000, position: 'top-right' });
+    }
+  };
 
-            if (response.ok) {
-                alert("Kamera başarıyla eklendi!");
-                fetchCameras();
-            } else {
-                const error = await response.json();
-                alert("Hata: " + error.detail);
-            }
+  const deleteCamera = async (id) => {
+    const confirmation = confirm(
+      "Bu kamerayı silmek istediğinizden emin misiniz?",
+    );
+    if (!confirmation) return;
 
-            camera = { id: "", ip: "" };
-        }
-    };
-
-    const deleteCamera = async (cameraId) => {
-        const confirmation = confirm(
-            "Bu kamerayı silmek istediğinizden emin misiniz?",
-        );
-        if (!confirmation) return;
-
-        const response = await fetch(
-            `http://localhost:8000/cameras/${cameraId}`,
-            {
-                method: "DELETE",
-            },
-        );
-
-        if (response.ok) {
-            alert("Kamera silindi!");
-            fetchCameras();
-        } else {
-            alert("Silme işlemi sırasında hata oluştu!");
-        }
-    };
-
+    await fetch(`http://localhost:8000/cameras/${id}`, {
+      method: 'DELETE',
+    });
     fetchCameras();
+  };
+
+  onMount(fetchCameras);
 </script>
 
-<div class="bg-gray-100 p-6 rounded-lg shadow-lg flex flex-col gap-4">
-    <h2 class="text-lg font-bold text-center">Kamera Yönetimi</h2>
+<div class="w-full">
+  <!-- Başlık -->
+  <div class="mb-6">
+    <h2 class="text-2xl font-bold text-gray-800 mb-2">Kamera Yönetimi</h2>
+    <p class="text-gray-600">Kamera ekleyebilir veya mevcut kameraları görüntüleyebilirsiniz.</p>
+  </div>
 
-    <!-- Switch Bileşeni -->
-    <div class="flex items-center justify-center gap-4">
-        <span class="text-gray-700 font-medium">Listele</span>
-        <label class="relative inline-flex items-center cursor-pointer">
-            <input
-                type="checkbox"
-                bind:checked={$showAddCamera}
-                class="sr-only peer"
-            />
-            <div
-                class="w-14 h-7 bg-gray-300 peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-7"
-            ></div>
-        </label>
-        <span class="text-gray-700 font-medium">Ekle</span>
-    </div>
+  <!-- Tab Butonları -->
+  <div class="flex mb-6 bg-gray-100 rounded-lg p-1">
+    <button
+      on:click={() => showAdd.set(true)}
+      class={`flex-1 py-2 px-4 rounded-md transition-all duration-200 flex items-center justify-center gap-2 ${
+        $showAdd 
+          ? 'bg-white shadow-sm text-blue-600 font-medium' 
+          : 'text-gray-600 hover:text-gray-800'
+      }`}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </svg>
+      Kamera Ekle
+    </button>
+    
+    <button
+      on:click={() => showAdd.set(false)}
+      class={`flex-1 py-2 px-4 rounded-md transition-all duration-200 flex items-center justify-center gap-2 ${
+        !$showAdd 
+          ? 'bg-white shadow-sm text-blue-600 font-medium' 
+          : 'text-gray-600 hover:text-gray-800'
+      }`}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h4l3-3h4l3 3h4v13H3V7z" />
+        <circle cx="12" cy="13" r="3" />
+      </svg>
+      Kameraları Listele
+    </button>
+  </div>
 
-    {#if $showAddCamera}
+  <!-- İçerik -->
+  <div class="bg-gray-50 rounded-lg p-4 min-h-[300px]">
+    {#if $showAdd}
+      <!-- Kamera Ekle Formu -->
+      <div class="space-y-4">
         <div>
-            <h3 class="text-sm font-semibold">Kamera Ekle</h3>
-            <input
-                type="text"
-                placeholder="ID"
-                bind:value={camera.id}
-                class="p-1 border rounded w-full mt-2 text-sm"
-            />
-            <input
-                type="text"
-                placeholder="IP Adresi"
-                bind:value={camera.ip}
-                class="p-1 border rounded w-full mt-2 text-sm"
-            />
-
-            <button
-                on:click={addCamera}
-                class="bg-blue-500 text-white p-2 rounded-lg shadow-md w-full mt-3 text-sm"
-                >Ekle ve Kaydet</button
-            >
+          <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Kamera ID</label>
+          <input
+            type="text"
+            placeholder="Örn: cam001"
+            bind:value={camera.id}
+            class="w-full p-3 border border-blue-400 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-slate-400 focus:border-blue-500 dark:focus:border-slate-400 transition-colors"
+          />
         </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">IP Adresi</label>
+          <input
+            type="text"
+            placeholder="Örn: 192.168.1.100"
+            bind:value={camera.ip}
+            class="w-full p-3 border border-blue-400 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-slate-400 focus:border-blue-500 dark:focus:border-slate-400 transition-colors"
+          />
+        </div>
+        
+        <button
+          on:click={addCamera}
+          class="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-blue-700 transform hover:scale-[1.02] transition-all duration-200 shadow-md"
+        >
+          Kamerayı Kaydet
+        </button>
+      </div>
     {:else}
-        <div>
-            <h3 class="text-md font-bold">Kayıtlı Kameralar</h3>
-            <ul>
-                {#each $cameraList as cam}
-                    <li class="border p-2 my-2 rounded bg-white flex justify-between items-center">
-                        <div>
-                            <span class="font-semibold">ID:</span> - {cam.id}
-                        </div>
-                        <button
-                            on:click={() => deleteCamera(cam.id)}
-                            class="text-red-500 hover:text-red-700 p-1 rounded"
-                        >
-                            Sil
-                        </button>
-                    </li>
-                {/each}
-            </ul>
-        </div>
+      <!-- Kayıtlı Kameralar Listesi -->
+      <div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Kayıtlı Kameralar ({$cameraList.length})</h3>
+        {#if $cameraList.length === 0}
+          <div class="text-center py-8 text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h4l3-3h4l3 3h4v13H3V7z" />
+              <circle cx="12" cy="13" r="3" />
+            </svg>
+            <p>Henüz kayıtlı kamera bulunmuyor.</p>
+          </div>
+        {:else}
+          <div class="space-y-2 max-h-60 overflow-y-auto">
+                          {#each $cameraList as cam}
+                <div class="flex justify-between items-center bg-white dark:bg-slate-700 p-3 rounded-lg border border-blue-200 dark:border-slate-600 hover:shadow-md transition-shadow">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h4l3-3h4l3 3h4v13H3V7z" />
+                      <circle cx="12" cy="13" r="3" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="font-medium text-gray-800 dark:text-slate-200">{cam.id}</div>
+                    <div class="text-sm text-gray-500 dark:text-slate-400">{cam.ip}</div>
+                  </div>
+                </div>
+                <button
+                  on:click={() => deleteCamera(cam.id)}
+                  class="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Kamerayı sil"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
     {/if}
+  </div>
 </div>

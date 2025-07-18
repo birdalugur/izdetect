@@ -1,8 +1,24 @@
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
-from db import (get_all_detection_sessions, get_detection_sessions_with_pagination, delete_detection_session_and_related)
+from db import (get_all_detection_sessions, get_detection_sessions_with_pagination, delete_detection_session_and_related, get_detection_session_by_id)
 
 router = APIRouter(prefix="/detection-sessions", tags=["Detection Sessions"])
+
+
+@router.get("/{session_id}")
+async def get_detection_session(session_id: str):
+    """
+    Belirtilen session_id'ye göre tek bir detection session getirir.
+    """
+    try:
+        session = get_detection_session_by_id(session_id)
+        if session is None:
+            raise HTTPException(status_code=404, detail="Session not found")
+        return JSONResponse(content=session)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/")

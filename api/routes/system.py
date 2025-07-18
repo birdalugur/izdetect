@@ -1,9 +1,12 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from db import get_settings, update_settings
+# app/routes/system.py
+from fastapi import APIRouter
 import psutil
+from pydantic import BaseModel
+from services.redis_service import RedisService
+from fastapi import HTTPException
 
 router = APIRouter(prefix="/system", tags=["System"])
+redis_service = RedisService()
 
 
 class Settings(BaseModel):
@@ -12,20 +15,13 @@ class Settings(BaseModel):
 
 
 @router.post("/update-settings")
-async def update_system_settings(settings: Settings):
+async def update_settings(settings: Settings):
     try:
-        update_settings(settings.memory, settings.sensitivity)
+        redis_service.set("tracking:memory", settings.memory)
+        redis_service.set("tracking:sensitivity", settings.sensitivity)
         return {"message": "Settings updated successfully"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/get-settings")
-async def fetch_system_settings():
-    try:
-        return get_settings()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to update settings: {e}")
 
 
 @router.get("/ram")

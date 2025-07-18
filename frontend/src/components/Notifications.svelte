@@ -1,178 +1,172 @@
+<!-- src/components/Notifications.svelte -->
 <script>
-    let notifications = [];
-    let selectedImage = null;
-    let selectedNotificationId = null;
+  import { onMount } from 'svelte';
+  import GlassCard from './GlassCard.svelte';
+  import LabelTag from './LabelTag.svelte';
+  import { modalStore } from './store.js';
+  import toast from 'svelte-french-toast';
+  import NotificationModal from './NotificationModal.svelte';
 
-    const MAX_NOTIFICATIONS = 48;
+  let notifications = [];
+  const MAX_NOTIFICATIONS = 48;
 
-    const fetchNotifications = async () => {
-        const response = await fetch("http://localhost:8000/notifications");
-        const data = await response.json();
-        notifications = data.reverse().slice(0, MAX_NOTIFICATIONS);
+  // Bildirimleri fetch et
+  async function fetchNotifications() {
+    const res = await fetch('http://localhost:8000/notifications');
+    const data = await res.json();
+    notifications = data.reverse().slice(0, MAX_NOTIFICATIONS);
+  }
+
+  // SSE ile canlı bildirim ve ses
+  const notificationSound = new Audio('/sounds/notification.mp3');
+  function setupEventSource() {
+    const eventSource = new EventSource('http://localhost:8000/cameras/events');
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        notifications = [data, ...notifications].slice(0, MAX_NOTIFICATIONS);
+        notificationSound.play();
+      } catch (e) {
+        console.error('Hata: Gelen veri JSON formatında değil!', e);
+      }
     };
+    eventSource.onerror = (err) => {
+      console.error('SSE bağlantı hatası!', err);
+      eventSource.close();
+      setTimeout(setupEventSource, 3000);
+    };
+  }
 
+  onMount(() => {
     fetchNotifications();
-
-    const removeAllNotifications = async () => {
-        const userConfirmed = window.confirm(
-            "Tüm bildirimleri silmek istediğinizden emin misiniz?",
-        );
-        if (userConfirmed) {
-            await fetch("http://localhost:8000/notifications/clear-all", {
-                method: "POST",
-            });
-            notifications = [];
-        }
-    };
-
-    const showImage = (imageUrl, id) => {
-        selectedImage = "http://localhost:8000/cameras/output/" + imageUrl;
-        selectedNotificationId = id;
-    };
-
-    const closeImage = () => {
-        selectedImage = null;
-        selectedNotificationId = null;
-    };
-
-    const showNextImage = () => {
-        const currentIndex = notifications.findIndex(
-            (notification) => notification._id === selectedNotificationId,
-        );
-        if (currentIndex >= 0 && currentIndex < notifications.length - 1) {
-            const nextNotification = notifications[currentIndex + 1];
-            showImage(nextNotification.image_url, nextNotification._id);
-        }
-    };
-
-    const showPreviousImage = () => {
-        const currentIndex = notifications.findIndex(
-            (notification) => notification._id === selectedNotificationId,
-        );
-        if (currentIndex > 0) {
-            const previousNotification = notifications[currentIndex - 1];
-            showImage(previousNotification.image_url, previousNotification._id);
-        }
-    };
-
-    const notificationSound = new Audio("/sounds/notification.mp3");
-    function setupEventSource() {
-        const eventSource = new EventSource(
-            "http://localhost:8000/cameras/events",
-        );
-
-        eventSource.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-
-                // Yeni bildirimi başa ekle, sonra gerekirse sonuncuyu sil
-                notifications = [data, ...notifications].slice(
-                    0,
-                    MAX_NOTIFICATIONS,
-                );
-
-                notificationSound.play();
-            } catch (e) {
-                console.error("Hata: Gelen veri JSON formatında değil!", e);
-            }
-        };
-
-        eventSource.onerror = (err) => {
-            console.error("SSE bağlantı hatası!", err);
-            eventSource.close();
-            setTimeout(setupEventSource, 3000);
-        };
-    }
-
     setupEventSource();
+  });
+
+  async function removeAll() {
+    const confirmed = window.confirm('Tüm bildirimleri silmek istediğinize emin misiniz?');
+    if (!confirmed) {
+      toast.dismiss();
+      toast.error('Tüm bildirimleri silme işlemi iptal edildi.', { duration: 3000, position: 'top-right' });
+      return;
+    }
+    await fetch('http://localhost:8000/notifications/clear-all', { method: 'POST' });
+    notifications = [];
+  }
+
+  async function removeOne(id) {
+    await fetch(`http://localhost:8000/notifications/${id}`, { method: 'DELETE' });
+    notifications = notifications.filter(n => n._id !== id);
+  }
+
+  // Resim görüntüleme modalını aç
+  function showImage(url, id) {
+    modalStore.set({
+      isOpen: true,
+      component: NotificationModal,
+      props: {
+        notificationId: id
+      }
+    });
+  }
 </script>
 
-<div class="flex justify-between items-center p-1.5 border rounded-md mt-4">
+<GlassCard className="flex flex-col">
+  <!-- Başlık ve Tümünü Sil -->
+  <div class="flex justify-between items-center mb-4">
+    <h3 class="text-xl font-semibold text-white-800 dark:text-black-200">Bildirimler</h3>
     <button
-        class="text-red-600 hover:text-red-800"
-        on:click={removeAllNotifications}
-        title="Clear All Notifications"
+      on:click={removeAll}
+      class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all duration-200 hover:scale-105 shadow-md
+             bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 
+             dark:from-red-600 dark:to-red-700 dark:hover:from-red-700 dark:hover:to-red-800
+             text-white border border-red-300 dark:border-red-500"
     >
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 448 512"
-            class="w-6 h-6"
-        >
-            <path
-                d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.7 23.7 0 0 0 -21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0 -16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"
-            />
-        </svg>
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none"
+           viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22" />
+      </svg>
+      <span>Tümünü Sil</span>
     </button>
-</div>
+  </div>
 
-<div class="mt-2 text-center overflow-y-auto">
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {#each notifications as notification}
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <div
-                class="bg-gray-100 p-4 rounded-md shadow hover:scale-105 transition cursor-pointer"
-                on:click={() =>
-                    showImage(notification.image_url, notification._id)}
+  <!-- Grid -->
+  <div class="max-h-[calc(100vh-200px)] overflow-y-auto glass-scroll">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-1">
+      {#if notifications.length === 0}
+        <p class="col-span-full text-center text-gray-500 mt-8">Gösterilecek bildirim yok.</p>
+      {:else}
+        {#each notifications as n}
+          <div
+            class="relative bg-[rgba(255,255,255,0.5)] backdrop-blur rounded-lg p-3 shadow hover:scale-[1.02] transition"
+          >
+            <!-- Sil butonu -->
+            <button
+              on:click={() => removeOne(n._id)}
+              class="absolute top-2 right-2 text-red-600 hover:text-white hover:bg-red-600 p-1 rounded-full transition"
+              aria-label="Sil"
             >
-                <div class="flex flex-wrap gap-2">
-                    {#each notification.labels as label}
-                        {#each Object.entries(label) as [key, value]}
-                            <div
-                                class="bg-blue-100 border border-blue-300 rounded-md px-2 py-1 text-sm"
-                            >
-                                <span class="text-blue-600 font-semibold"
-                                    >{key}</span
-                                >: {value}
-                            </div>
-                        {/each}
-                    {/each}
-                </div>
-                <img
-                    src={"http://localhost:8000/cameras/output/" +
-                        notification.image_url}
-                    alt="Thumbnail"
-                    class="w-full rounded-md mt-2"
-                />
-                <p class="text-gray-500 text-xs mt-2">
-                    {notification.time.split(".")[0]}
-                </p>
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none"
+                   viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <!-- Etiketler -->
+            <div class="flex flex-wrap gap-2 mb-2">
+              {#each n.labels as label}
+                {#each Object.entries(label) as [key, val]}
+                  <LabelTag labelKey={key} labelValue={val} size="sm" />
+                {/each}
+              {/each}
             </div>
-        {/each}
-    </div>
-</div>
 
-{#if selectedImage}
-    <div class="fixed inset-0 flex items-center justify-center bg-white z-50">
-        <button
-            class="absolute top-4 right-4 z-50 bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center text-gray-700 hover:text-gray-900"
-            on:click={closeImage}
-        >
-            <span class="text-xl">&times;</span>
-        </button>
-        <button
-            class="absolute left-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0"
-            on:click={showPreviousImage}
-        >
-            <span
-                class="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-700 text-2xl"
-            >
-                ←
-            </span>
-        </button>
-        <img
-            class="max-w-full max-h-full py-24"
-            src={selectedImage}
-            alt="Detected frame"
-        />
-        <button
-            class="absolute right-0 w-16 h-full bg-white hover:bg-gray-100 active:bg-gray-200 border-0 transition-all flex-shrink-0"
-            on:click={showNextImage}
-        >
-            <span
-                class="absolute right-5 top-1/2 transform -translate-y-1/2 text-gray-700 text-2xl"
-            >
-                →
-            </span>
-        </button>
+            <!-- Küçük resim -->
+            <img
+              src={"http://localhost:8000/cameras/output/" + n.image_url}
+              alt="Thumbnail"
+              class="w-full rounded-md mb-2 cursor-pointer"
+              on:click={() => showImage(n.image_url, n._id)}
+              on:keydown={(e) => e.key === 'Enter' && showImage(n.image_url, n._id)}
+              tabindex="0"
+              role="button"
+            />
+
+            <!-- Zaman -->
+            <p class="text-gray-600 text-xs text-center">{n.time.split('.')[0]}</p>
+          </div>
+        {/each}
+      {/if}
     </div>
-{/if}
+  </div>
+</GlassCard>
+
+<style>
+  .glass-btn {
+    background: rgba(255,255,255,0.35);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border-radius: 9999px;
+    box-shadow: 0 4px 24px 0 rgba(31, 38, 135, 0.18);
+    border: 1.5px solid rgba(255,255,255,0.35);
+    transition: background 0.2s, box-shadow 0.2s, color 0.2s;
+  }
+  .glass-btn:hover {
+    background: rgba(239,68,68,0.7);
+    color: #fff;
+  }
+  .glass-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+    background: transparent;
+  }
+  .glass-scroll::-webkit-scrollbar-thumb {
+    background: rgba(31,38,135,0.12);
+    border-radius: 8px;
+  }
+  .glass-scroll::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.1);
+    border-radius: 8px;
+  }
+</style>
