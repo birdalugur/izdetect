@@ -174,6 +174,8 @@ def delete_all(start_date, end_date):
     if isinstance(end_date, str):
         end_date = datetime.fromisoformat(end_date)
 
+    print(f"start date {start_date} end date {end_date}")
+
     # 1. Silinecek notification'ları al
     notifications = list(
         notifications_collection.find({"time": {"$gte": start_date, "$lte": end_date}})
@@ -227,6 +229,7 @@ def get_notifications_by_date(
 
         query = {"time": {"$gte": start_date, "$lte": end_date}}
         print(f"Date query: {start_date} to {end_date}")
+        print(f"start date {start_date} end date {end_date}")
 
         if label_list:
             # MongoDB query for array of objects: labels: [{"1": 10}, {"2": 2}]

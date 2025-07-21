@@ -1,0 +1,15 @@
+opencv-python==4.10.0.84
+imageio==2.36.0
+redis
+aioredis
+psutil
+torch
+torchvision
+--extra-index-url https://download.pytorch.org/whl/cu128
+transformers
+pillow
+python-multipart
+pymongo
+matplotlib
+filterpy
+pydantic
