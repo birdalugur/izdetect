@@ -10,7 +10,29 @@ db = client["object_detection"]
 notifications_collection = db["notifications"]
 detection_sessions_collection = db["detection_sessions"]
 
+settings_collection = db["system_settings"]
 
+
+def get_settings():
+    settings_doc = settings_collection.find_one({"_id": "global_settings"})
+    if settings_doc:
+        return {
+            "memory": settings_doc.get("memory", 5),
+            "sensitivity": settings_doc.get("sensitivity", 0.2),
+        }
+    else:
+        # Return defaults if not found
+        return {"memory": 5, "sensitivity": 0.2}
+
+
+def update_settings(memory: int, sensitivity: float):
+    settings_collection.update_one(
+        {"_id": "global_settings"},
+        {"$set": {"memory": memory, "sensitivity": sensitivity}},
+        upsert=True,
+    )
+
+    
 def get_detection_sessions_with_pagination(
     skip: int = 0, limit: int = 10
 ) -> Tuple[List[dict], int]:

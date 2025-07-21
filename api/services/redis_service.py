@@ -1,6 +1,4 @@
-# app/services/redis_service.py
 import json
-import redis
 from redis import Redis as SyncRedis
 from redis.asyncio import Redis as AsyncRedis
 from typing import AsyncGenerator
