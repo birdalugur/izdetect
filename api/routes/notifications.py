@@ -25,6 +25,15 @@ class BatchDeleteRequest(BaseModel):
     notification_ids: List[str]
 
 
+@router.post("/{notification_id}/close")
+async def close_notification_route(
+    notification_id: str = Path(..., description="The ID of the notification to close"),
+):
+    if close_notification(notification_id) == 0:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    return {"message": "Notification closed successfully"}
+
+
 @router.get("/")
 async def get_notifications():
     notifications = get_active_notifications()
@@ -147,13 +156,7 @@ async def get_notifications_around_route(
     return JSONResponse(notifications)
 
 
-@router.post("/{notification_id}/close")
-async def close_notification_route(
-    notification_id: str = Path(..., description="The ID of the notification to close"),
-):
-    if close_notification(notification_id) == 0:
-        raise HTTPException(status_code=404, detail="Notification not found")
-    return {"message": "Notification closed successfully"}
+
 
 
 @router.delete("/{notification_id}")
