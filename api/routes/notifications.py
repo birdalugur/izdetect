@@ -1,5 +1,5 @@
 # app/routes/notifications.py
-from fastapi import APIRouter, HTTPException, Path
+from fastapi import APIRouter, HTTPException, Path, Query
 from fastapi.responses import JSONResponse
 from typing import Optional, List
 from pydantic import BaseModel
@@ -16,6 +16,7 @@ from db import (
     get_notifications_by_session,
     get_notification_by_id,  # Yeni import
     get_notifications_around_id,  # Yeni import
+    get_document_count,
 )
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
@@ -52,31 +53,30 @@ async def get_notifications_by_date_endpoint(
     labels: Optional[str] = None,
 ):
     try:
-        # Boş string kontrolü ekle
-        if labels and labels.strip():
-            label_list = [str(label.strip()) for label in labels.split(",") if label.strip()]
-        else:
-            label_list = None
-            
-        notifications, total_count = get_notifications_by_date(
+        label_list = [int(label) for label in labels.split(",")] if labels else None
+        notifications = get_notifications_by_date(
             start_date, end_date, skip, limit, label_list
         )
         notifications = [
             map_labels(notification, Config.LABEL_MAP) for notification in notifications
         ]
-        return JSONResponse({
-            "notifications": notifications,
-            "total": total_count,
-            "skip": skip,
-            "limit": limit
-        })
+        
+        return JSONResponse(notifications)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid label format: {e}")
     except Exception as e:
-        # Debug için detaylı hata mesajı
-        import traceback
-        print(f"Error in by_date endpoint: {str(e)}")
-        print(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
+        raise HTTPException(status_code=400, detail=str(e))
+    
+@router.get("/record_count")
+async def get_record_count(
+    start_time: str = Query(..., description="Start time in ISO format"),
+    end_time: str = Query(..., description="End time in ISO format"),
+):
+    try:
+        count = get_document_count(start_time, end_time)
+        return {"count": count}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/by_session/{session_id}")
 async def get_notifications_by_session_endpoint(

@@ -156,21 +156,25 @@
     try {
       const skip = (page - 1) * pageSize;
       let url = `http://localhost:8000/notifications/by_date?start_date=${encodeURIComponent(startDateTime)}&end_date=${encodeURIComponent(endDateTime)}&skip=${skip}&limit=${pageSize}`;
-      
+      let record_count_url = `http://localhost:8000/notifications/record_count?start_time=${encodeURIComponent(startDateTime)}&end_time=${encodeURIComponent(endDateTime)}`;
       // Sadece labels varsa URL'e ekle
       if (labelsParam) {
         url += `&labels=${labelsParam}`;
+        record_count_url += `&labels=${labelsParam}`;
       }
       
       console.log('Fetching notifications with URL:', url);
       
       const response = await fetch(url);
+      const count = await fetch(record_count_url)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      notifications = data.notifications;
-      totalNotifications = data.total;
+      const record_count = await count.json()
+      // notifications = data.notifications;
+      notifications = data;
+      totalNotifications = record_count.count;
       currentPage = page;
     } catch (error) {
       console.error("Tarih filtreleme hatası:", error);

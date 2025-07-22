@@ -207,72 +207,60 @@ def clear_all_notifications():
 
 def get_notifications_by_date(
     start_date, end_date, skip=0, limit=12, label_list: Optional[List[str]] = None
-) -> Tuple[List[dict], int]:
+):
     """
     :param start_date: Başlangiç tarihi (ISO formatinda string veya datetime objesi)
     :param end_date: Bitiş tarihi (ISO formatinda string veya datetime objesi)
     :param skip: Kaç kayit atlanacak
     :param limit: Kaç kayit alinacak
     :param label_list: Filtrelenecek label ID'leri listesi (opsiyonel)
-    :return: Tuple of (notification list, total count)
+    :return: Belirtilen tarih araligindaki bildirimlerin listesi
     """
-    try:
-        if isinstance(start_date, str):
-            # Farklı tarih formatlarını handle et
-            if 'T' not in start_date:
-                start_date = start_date + 'T00:00:00'
-            start_date = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-        if isinstance(end_date, str):
-            if 'T' not in end_date:
-                end_date = end_date + 'T23:59:59'
-            end_date = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+    if isinstance(start_date, str):
+        start_date = datetime.fromisoformat(start_date)
+    if isinstance(end_date, str):
+        end_date = datetime.fromisoformat(end_date)
 
-        query = {"time": {"$gte": start_date, "$lte": end_date}}
-        print(f"Date query: {start_date} to {end_date}")
-        print(f"start date {start_date} end date {end_date}")
+    query = {"time": {"$gte": start_date, "$lte": end_date}}
 
-        if label_list:
-            # MongoDB query for array of objects: labels: [{"1": 10}, {"2": 2}]
-            # We need to check if any object in labels array has the specified key
-            or_conditions = []
-            for label_id in label_list:
-                # Check if labels array contains an object with this key
-                condition = {"labels": {"$elemMatch": {label_id: {"$exists": True}}}}
-                or_conditions.append(condition)
-            
-            if or_conditions:
-                query["$or"] = or_conditions
-                print(f"Label query: {or_conditions}")
+    if label_list:
+        label_exists_conditions = [
+            {f"labels.{label}": {"$exists": True}} for label in label_list
+        ]
+        not_other_labels_condition = {
+            "labels": {
+                "$not": {
+                    "$elemMatch": {
+                        "$and": [
+                            {str(label): {"$exists": False}} for label in label_list
+                        ]
+                    }
+                }
+            }
+        }
+        query["$and"] = [*label_exists_conditions, not_other_labels_condition]
 
-        print(f"Final MongoDB query: {query}")
+    notifications = list(notifications_collection.find(query).skip(skip).limit(limit))
 
-        # Get total count first
-        total_count = notifications_collection.count_documents(query)
-        print(f"Total count found: {total_count}")
+    for notification in notifications:
+        notification["_id"] = str(notification["_id"])
+        for key, value in notification.items():
+            if isinstance(value, datetime):
+                notification[key] = value.isoformat()
 
-        # Get notifications sorted by time (newest first)
-        notifications = list(
-            notifications_collection.find(query)
-            .sort("time", -1)
-            .skip(skip)
-            .limit(limit)
-        )
+    return notifications
 
-        print(f"Retrieved {len(notifications)} notifications")
 
-        for notification in notifications:
-            notification["_id"] = str(notification["_id"])
-            for key, value in notification.items():
-                if isinstance(value, datetime):
-                    notification[key] = value.isoformat()
+def get_document_count(start_time, end_time):
+    start_dt = datetime.fromisoformat(start_time)
+    end_dt = datetime.fromisoformat(end_time)
 
-        return notifications, total_count
-    
-    except Exception as e:
-        print(f"Error in get_notifications_by_date: {str(e)}")
-        import traceback
-        print(f"Traceback: {traceback.format_exc()}")
-        raise e
+    count = notifications_collection.count_documents({
+        "time": {
+            "$gte": start_dt,
+            "$lt": end_dt
+            }})
+    return count
 
 
 def get_notifications_by_session(
