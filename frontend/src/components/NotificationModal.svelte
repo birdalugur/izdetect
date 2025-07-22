@@ -133,13 +133,13 @@
     let endDateTime = endDate;
     
     if (startTime) {
-      startDateTime = `${startDate}T${startTime}:00`;
+      startDateTime = `${startDate}T${startTime}`;
     } else {
       startDateTime = `${startDate}T00:00:00`;
     }
     
     if (endTime) {
-      endDateTime = `${endDate}T${endTime}:59`;
+      endDateTime = `${endDate}T${endTime}`;
     } else {
       endDateTime = `${endDate}T23:59:59`;
     }
