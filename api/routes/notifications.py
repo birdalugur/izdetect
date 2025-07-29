@@ -1,4 +1,3 @@
-# app/routes/notifications.py
 from fastapi import APIRouter, HTTPException, Path, Query
 from fastapi.responses import JSONResponse
 from typing import Optional, List
@@ -14,8 +13,8 @@ from db import (
     delete_all,
     delete_notifications_by_ids,
     get_notifications_by_session,
-    get_notification_by_id,  # Yeni import
-    get_notifications_around_id,  # Yeni import
+    get_notification_by_id,
+    get_notifications_around_id,
     get_document_count,
 )
 
@@ -26,17 +25,29 @@ class BatchDeleteRequest(BaseModel):
     notification_ids: List[str]
 
 
-@router.post("/{notification_id}/close")
+@router.post("/{notification_id}/close", summary="Bildirim kapat")
 async def close_notification_route(
-    notification_id: str = Path(..., description="The ID of the notification to close"),
+    notification_id: str = Path(..., description="Kapatılacak bildirimin ID'si"),
 ):
+    """
+    Belirtilen bildirimin durumunu 'closed' yapar.
+
+    Returns:
+        dict: İşlem sonucu mesajı.
+    """
     if close_notification(notification_id) == 0:
         raise HTTPException(status_code=404, detail="Notification not found")
     return {"message": "Notification closed successfully"}
 
 
-@router.get("/")
+@router.get("/", summary="Aktif bildirimleri getir")
 async def get_notifications():
+    """
+    Durumu 'active' olan bildirimleri getirir (anlık bildirimler).
+
+    Returns:
+        List[dict]: Etiketlenmiş bildirim listesi.
+    """
     notifications = get_active_notifications()
     notifications = [
         map_labels(notification, Config.LABEL_MAP) for notification in notifications
@@ -44,7 +55,7 @@ async def get_notifications():
     return JSONResponse(notifications)
 
 
-@router.get("/by_date")
+@router.get("/by_date", summary="Tarihe göre bildirimleri getir")
 async def get_notifications_by_date_endpoint(
     start_date: str,
     end_date: str,
@@ -52,6 +63,19 @@ async def get_notifications_by_date_endpoint(
     limit: int = 12,
     labels: Optional[str] = None,
 ):
+    """
+    Belirtilen tarih aralığına ve isteğe bağlı etiketlere göre bildirimleri döner.
+
+    Args:
+        start_date (str): Başlangıç tarihi (ISO format).
+        end_date (str): Bitiş tarihi (ISO format).
+        skip (int): Atlanacak kayıt sayısı.
+        limit (int): Döndürülecek kayıt sayısı.
+        labels (str, optional): Virgülle ayrılmış label ID'leri.
+
+    Returns:
+        List[dict]: Etiketlenmiş bildirim listesi.
+    """
     try:
         label_list = [int(label) for label in labels.split(",")] if labels else None
         notifications = get_notifications_by_date(
@@ -60,38 +84,56 @@ async def get_notifications_by_date_endpoint(
         notifications = [
             map_labels(notification, Config.LABEL_MAP) for notification in notifications
         ]
-        
         return JSONResponse(notifications)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid label format: {e}")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
-@router.get("/record_count")
+
+
+@router.get("/record_count", summary="Tarihler arasındaki kayıt sayısını getir")
 async def get_record_count(
-    start_time: str = Query(..., description="Start time in ISO format"),
-    end_time: str = Query(..., description="End time in ISO format"),
+    start_time: str = Query(..., description="Başlangıç zamanı (ISO format)"),
+    end_time: str = Query(..., description="Bitiş zamanı (ISO format)"),
 ):
+    """
+    Belirtilen zaman aralığındaki toplam kayıt sayısını döner.
+
+    Returns:
+        dict: Kayıt sayısı.
+    """
     try:
         count = get_document_count(start_time, end_time)
         return {"count": count}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/by_session/{session_id}")
+
+@router.get("/by_session/{session_id}", summary="Oturuma göre bildirimleri getir")
 async def get_notifications_by_session_endpoint(
     session_id: str,
     skip: int = 0,
     limit: int = 12,
     labels: Optional[str] = None,
 ):
+    """
+    Belirtilen oturum ID'sine ait bildirimleri getirir.
+
+    Args:
+        session_id (str): Oturum ID'si.
+        skip (int): Atlanacak kayıt sayısı.
+        limit (int): Döndürülecek kayıt sayısı.
+        labels (str, optional): Virgülle ayrılmış label ID'leri.
+
+    Returns:
+        List[dict]: Bildirim listesi.
+    """
     try:
-        # Boş string kontrolü ekle
         if labels and labels.strip():
             label_list = [str(label.strip()) for label in labels.split(",") if label.strip()]
         else:
             label_list = None
-            
+
         notifications = get_notifications_by_session(
             session_id, skip, limit, label_list
         )
@@ -100,22 +142,29 @@ async def get_notifications_by_session_endpoint(
         ]
         return JSONResponse(notifications)
     except Exception as e:
-        # Debug için detaylı hata mesajı
-        import traceback
-        print(f"Error in by_session endpoint: {str(e)}")
-        print(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
-@router.post("/clear-all")
+@router.post("/clear-all", summary="Tüm aktif bildirimleri kapat")
 async def clear_all_notifications_route():
+    """
+    Durumu 'active' olan tüm bildirimleri 'closed' yapar.
+
+    Returns:
+        dict: Kapatılan bildirim sayısı.
+    """
     modified_count = clear_all_notifications()
     return {"message": f"{modified_count} notifications cleared"}
 
 
-@router.delete("/by_date")
+@router.delete("/by_date", summary="Tarihe göre bildirimleri sil")
 async def delete_notifications_by_date(start_date: str, end_date: str):
-    """Deletes all notifications within the specified date range."""
+    """
+    Belirtilen tarih aralığındaki tüm bildirimleri siler.
+
+    Returns:
+        dict: Silinen kayıt sayısı mesajı.
+    """
     try:
         result = delete_all(start_date, end_date)
         return {"message": f"{result.deleted_count} notifications deleted"}
@@ -123,9 +172,17 @@ async def delete_notifications_by_date(start_date: str, end_date: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/batch_delete")
+@router.delete("/batch_delete", summary="ID listesine göre bildirimleri sil")
 async def delete_notifications_batch(request: BatchDeleteRequest):
-    """Deletes notifications by a list of IDs."""
+    """
+    Belirtilen ID listesine göre birden fazla bildirimi siler.
+
+    Args:
+        request (BatchDeleteRequest): Silinecek bildirim ID'leri listesi.
+
+    Returns:
+        dict: Silinen bildirim sayısı mesajı.
+    """
     try:
         result = delete_notifications_by_ids(request.notification_ids)
         return {"message": f"{result.deleted_count} notifications deleted"}
@@ -133,9 +190,17 @@ async def delete_notifications_batch(request: BatchDeleteRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{notification_id}")
+@router.get("/{notification_id}", summary="Tekil bildirimi getir")
 async def get_notification_route(notification_id: str):
-    """Gets a single notification by ID."""
+    """
+    Belirtilen ID'ye sahip bildirimi getirir.
+
+    Args:
+        notification_id (str): Bildirim ID'si.
+
+    Returns:
+        dict: Bildirim verisi.
+    """
     notification = get_notification_by_id(notification_id)
     if notification is None:
         raise HTTPException(status_code=404, detail="Notification not found")
@@ -143,12 +208,21 @@ async def get_notification_route(notification_id: str):
     return JSONResponse(notification)
 
 
-@router.get("/{notification_id}/around")
+@router.get("/{notification_id}/around", summary="Çevresel bildirimleri getir")
 async def get_notifications_around_route(
     notification_id: str,
     limit: int = 3,
 ):
-    """Gets notifications around a specific notification ID."""
+    """
+    Belirtilen bildirimin etrafındaki (öncesi/sonrası) kayıtları getirir.
+
+    Args:
+        notification_id (str): Referans bildirimin ID'si.
+        limit (int): Kaç adet çevresel kayıt getirileceği.
+
+    Returns:
+        List[dict]: Etiketlenmiş bildirimler.
+    """
     notifications = get_notifications_around_id(notification_id, limit)
     if not notifications:
         raise HTTPException(status_code=404, detail="Notifications not found")
@@ -156,12 +230,17 @@ async def get_notifications_around_route(
     return JSONResponse(notifications)
 
 
-
-
-
-@router.delete("/{notification_id}")
+@router.delete("/{notification_id}", summary="Tekil bildirimi sil")
 async def delete_notification_route(notification_id: str):
-    """Deletes a notification by ID."""
+    """
+    Belirtilen ID'ye sahip bildirimi siler.
+
+    Args:
+        notification_id (str): Silinecek bildirim ID'si.
+
+    Returns:
+        dict: Başarı mesajı.
+    """
     result = delete_notification(notification_id)
     if result is not None:
         return {"message": "Notification deleted successfully"}
