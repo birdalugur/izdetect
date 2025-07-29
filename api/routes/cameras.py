@@ -14,8 +14,15 @@ router = APIRouter(prefix="/cameras", tags=["Cameras"])
 redis_service = RedisService()
 
 
-@router.post("/start-detection")
+@router.post("/start-detection", summary="Nesne tespiti başlat")
 async def start_detection():
+    """
+    Tüm kayıtlı kameralar için RTSP bağlantılarını Redis'e kaydeder, 
+    tespit sürecini başlatmak için ilgili sinyali yayınlar.
+
+    Returns:
+        dict: Başlatma mesajı ve RTSP URL listesi.
+    """
     try:
         cameras = CameraService.read_cameras()
         if not cameras:
@@ -23,7 +30,6 @@ async def start_detection():
         rtsp_urls = [cam["ip"] for cam in cameras]
         redis_service.delete("camera_urls")
         redis_service.rpush("camera_urls", *rtsp_urls)
-        # When starting, set stop_signal to 0
         redis_service.set("stop_signal", "0")
         redis_service.publish("task_control", "start")
         return {
@@ -34,10 +40,15 @@ async def start_detection():
         raise ServerErrorException(f"Failed to set camera URLs: {e}")
 
 
-@router.post("/stop-detection")
+@router.post("/stop-detection", summary="Nesne tespitini durdur")
 async def stop_detection():
+    """
+    Tespit sürecini durdurmak için Redis'e dur sinyali gönderir.
+
+    Returns:
+        dict: Durdurma işlemi başarılı mesajı.
+    """
     try:
-        # First set stop_signal to 1
         redis_service.set("stop_signal", "1")
         redis_service.publish("task_control", "stop")
         return {"message": "Frame producer stopped successfully"}
@@ -45,28 +56,50 @@ async def stop_detection():
         raise ServerErrorException(f"Failed to stop frame producer: {e}")
 
 
-@router.get("/isrunning")
+@router.get("/isrunning", summary="Sistem çalışıyor mu kontrol et")
 async def is_running():
+    """
+    Redis'ten 'stop_signal' bilgisini kontrol ederek sistemin çalışıp çalışmadığını döner.
+
+    Returns:
+        dict: `is_running` anahtarıyla boolean değer.
+    """
     try:
         stop_signal = redis_service.get("stop_signal")
-        # System is running only if stop_signal is explicitly "0"
         is_running = stop_signal == "0"
         return {"is_running": is_running}
     except Exception as e:
         raise ServerErrorException(f"Failed to check system status: {e}")
 
 
-# SSE endpoint
-@router.get("/events")
+@router.get("/events", summary="Gerçek zamanlı olay akışı (SSE)")
 async def get_events(request: Request):
+    """
+    Sunucu-taraflı olay (Server-Sent Events) akışı sağlar.
+
+    Args:
+        request (Request): Client bağlantı isteği.
+
+    Returns:
+        StreamingResponse: Canlı olay akışı.
+    """
     return StreamingResponse(
         redis_service.event_generator(request, Config.CHANNEL_NAME, map_labels),
         media_type="text/event-stream",
     )
 
 
-@router.get("/video/{camera_id}")
+@router.get("/video/{camera_id}", summary="Kamera canlı video akışı")
 async def video_feed(camera_id: str):
+    """
+    Belirtilen kamera için canlı video akışı sağlar.
+
+    Args:
+        camera_id (str): Kamera kimliği.
+
+    Returns:
+        StreamingResponse: MJPEG formatında video akışı.
+    """
     camera = CameraService.get_camera_by_id(camera_id)
     return StreamingResponse(
         VideoService.generate_frames(camera["ip"], camera_id),
@@ -74,28 +107,61 @@ async def video_feed(camera_id: str):
     )
 
 
-@router.get("/output/{filename}")
+@router.get("/output/{filename}", summary="Çıktı görselini getir")
 async def get_image(
-    filename: str = Path(..., description="The name of the file to retrieve"),
+    filename: str = Path(..., description="İndirilecek dosya adı"),
 ):
+    """
+    Belirtilen çıktı klasöründen dosya getirir.
+
+    Args:
+        filename (str): Dosya adı.
+
+    Returns:
+        FileResponse: Görsel dosyası.
+    """
     file_path = os.path.join(Config.OUTPUT_FOLDER, filename)
     if not os.path.exists(file_path):
         raise NotFoundException("File not found")
     return FileResponse(file_path)
 
 
-@router.get("/get-cameras")
+@router.get("/get-cameras", summary="Kayıtlı kameraları getir")
 async def get_cameras():
+    """
+    Tüm kayıtlı kameraları döner.
+
+    Returns:
+        List[dict]: Kamera bilgileri listesi.
+    """
     return CameraService.read_cameras()
 
 
-@router.post("/add")
+@router.post("/add", summary="Yeni kamera ekle")
 async def add_camera(camera: Camera):
+    """
+    Yeni bir kamera kaydı oluşturur.
+
+    Args:
+        camera (Camera): Eklenecek kamera bilgileri.
+
+    Returns:
+        dict: Başarı mesajı.
+    """
     CameraService.add_camera(camera)
     return {"message": "Kamera başarıyla eklendi"}
 
 
-@router.delete("/{camera_id}")
+@router.delete("/{camera_id}", summary="Kamera sil")
 async def delete_camera(camera_id: str):
+    """
+    Belirtilen ID'ye sahip kamerayı siler.
+
+    Args:
+        camera_id (str): Silinecek kamera kimliği.
+
+    Returns:
+        dict: Başarı mesajı.
+    """
     CameraService.delete_camera(camera_id)
     return {"message": "Kamera başarıyla silindi"}
