@@ -4,7 +4,7 @@ export const cameraUrls = writable({ cameraUrl1: "", cameraUrl2: "" });
 
 // Dark mode store
 export const darkMode = writable(false);
-
+export const detectionRefresh = writable(0);
 export const modalStore = writable({
   isOpen: false,
   component: null,
@@ -12,7 +12,7 @@ export const modalStore = writable({
 });
 
 // Modal yönetimi için yardımcı fonksiyonlar
-modalStore.openModal = function(component, props = {}, isSmallModal = false) {
+modalStore.openModal = function (component, props = {}, isSmallModal = false) {
   modalStore.set({
     isOpen: true,
     component: component,
@@ -21,7 +21,7 @@ modalStore.openModal = function(component, props = {}, isSmallModal = false) {
   });
 };
 
-modalStore.closeModal = function() {
+modalStore.closeModal = function () {
   modalStore.set({
     isOpen: false,
     component: null,
@@ -30,5 +30,5 @@ modalStore.closeModal = function() {
 };
 
 export function clearCameraUrls() {
-    cameraUrls.set({ cameraUrl1: "", cameraUrl2: "" });
+  cameraUrls.set({ cameraUrl1: "", cameraUrl2: "" });
 }
