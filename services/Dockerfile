@@ -1,4 +1,6 @@
-FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
+# FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
+FROM python:3.11-slim
+
 
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1

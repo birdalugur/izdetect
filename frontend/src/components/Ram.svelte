@@ -3,12 +3,13 @@
   import { onMount } from 'svelte';
   import GlassCard from './GlassCard.svelte';
   import { darkMode } from './store.js';
+  import { SERVER_IP } from "./store.js";
 
   let ram = { total: 1, used: 0 };
 
   async function fetchRam() {
     try {
-      const res = await fetch('http://localhost:8000/system/ram');
+      const res = await fetch(SERVER_IP+':8000/system/ram');
       if (res.ok) ram = await res.json();
     } catch (err) {
       console.error('RAM fetch error:', err);

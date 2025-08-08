@@ -8,6 +8,8 @@
   import Pagination from "./Pagination.svelte";
   import toast from "svelte-french-toast";
   import { detectionRefresh } from "./store.js";
+  import { SERVER_IP } from "./store.js";
+  
 
   const detectionRecords = writable([]);
   let currentPage = 1;
@@ -28,7 +30,7 @@
     const skip = (currentPage - 1) * recordsPerPage;
     try {
       const res = await fetch(
-        `http://localhost:8000/detection-sessions?skip=${skip}&limit=${recordsPerPage}`,
+        `${SERVER_IP}:8000/detection-sessions?skip=${skip}&limit=${recordsPerPage}`,
       );
       if (!res.ok) throw new Error(res.statusText);
       const data = await res.json();
@@ -76,10 +78,9 @@
       return;
     }
     try {
-      const res = await fetch(
-        `http://localhost:8000/detection-sessions/${id}`,
-        { method: "DELETE" },
-      );
+      const res = await fetch(`${SERVER_IP}:8000/detection-sessions/${id}`, {
+        method: "DELETE",
+      });
       if (!res.ok) throw new Error(res.statusText);
       fetchDetectionRecords();
     } catch (e) {

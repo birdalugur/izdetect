@@ -2,6 +2,7 @@
 <script>
   import { onMount } from "svelte";
   import GlassCard from "./GlassCard.svelte";
+  import { SERVER_IP } from "./store";
   import { cameraUrls, clearCameraUrls, darkMode } from "./store.js";
   import { detectionRefresh } from "./store.js";
 
@@ -32,19 +33,17 @@
   // Check if system is running
   const checkSystemState = async () => {
     try {
-      const response = await fetch("http://localhost:8000/cameras/isrunning");
+      const response = await fetch(SERVER_IP + ":8000/cameras/isrunning");
       const data = await response.json();
       if (response.ok) {
         isActive = data.is_running;
         if (isActive) {
           // If system is running, get the camera URLs
-          const cameras = await fetch(
-            "http://localhost:8000/cameras/get-cameras",
-          );
+          const cameras = await fetch(SERVER_IP + ":8000/cameras/get-cameras");
           const camerasData = await cameras.json();
           if (cameras.ok && camerasData.length > 0) {
             cameraUrls.set({
-              cameraUrl2: `http://localhost:8000/cameras/video/${camerasData[0].id}`,
+              cameraUrl2: `${SERVER_IP}:8000/cameras/video/${camerasData[0].id}`,
             });
           }
         }
@@ -58,7 +57,7 @@
   onMount(async () => {
     try {
       await checkSystemState();
-      const res = await fetch("http://localhost:8000/system/get-settings");
+      const res = await fetch(SERVER_IP + ":8000/system/get-settings");
       const data = await res.json();
       if (res.ok) {
         memoryValue = data.memory ?? memoryValue;
@@ -78,7 +77,7 @@
     addMessage(startMessage);
     try {
       const response = await fetch(
-        "http://localhost:8000/cameras/start-detection",
+        SERVER_IP + ":8000/cameras/start-detection",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -95,7 +94,7 @@
       if (response.ok) {
         // Check system state after starting
         const stateResponse = await fetch(
-          "http://localhost:8000/cameras/isrunning",
+          SERVER_IP + ":8000/cameras/isrunning",
         );
         const stateData = await stateResponse.json();
         isActive = stateData.is_running;
@@ -118,12 +117,9 @@
     stopMessage = "Stopping frame producer...";
     addMessage(stopMessage);
     try {
-      const response = await fetch(
-        "http://localhost:8000/cameras/stop-detection",
-        {
-          method: "POST",
-        },
-      );
+      const response = await fetch(SERVER_IP + ":8000/cameras/stop-detection", {
+        method: "POST",
+      });
       const data = await response.json();
       stopMessage = response.ok
         ? data.message
@@ -131,7 +127,7 @@
       if (response.ok) {
         // Check system state after stopping
         const stateResponse = await fetch(
-          "http://localhost:8000/cameras/isrunning",
+          SERVER_IP + ":8000/cameras/isrunning",
         );
         const stateData = await stateResponse.json();
         isActive = stateData.is_running;
@@ -151,19 +147,16 @@
 
   const updateSettings = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:8000/system/update-settings",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            memory: memoryValue,
-            sensitivity: sensitivityValue,
-          }),
+      const response = await fetch(SERVER_IP + ":8000/system/update-settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          memory: memoryValue,
+          sensitivity: sensitivityValue,
+        }),
+      });
       if (!response.ok) {
         throw new Error(`Failed to update settings: ${response.statusText}`);
       }

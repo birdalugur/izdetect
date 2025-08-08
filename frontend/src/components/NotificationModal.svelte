@@ -4,6 +4,7 @@
   import Pagination from "./Pagination.svelte";
   import LabelTag from "./LabelTag.svelte";
   import toast, { Toaster } from "svelte-french-toast";
+  import { SERVER_IP } from "./store.js";
 
   export let filterParams = null;
   export let sessionId = null;
@@ -24,6 +25,7 @@
   $: totalPages = Math.ceil(totalNotifications / pageSize);
 
   // Modal'in kaynağını belirle
+
   $: isFromTable = sessionId !== null;
   $: isFromFilter = filterParams !== null;
   $: isFromNotification = notificationId !== null;
@@ -59,7 +61,7 @@
 
     try {
       const response = await fetch(
-        `http://localhost:8000/notifications/${notificationId}`,
+        `${SERVER_IP}:8000/notifications/${notificationId}`,
       );
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -71,7 +73,7 @@
 
       // Resmi otomatik göster
       if (data.image_url) {
-        selectedImage = `http://localhost:8000/cameras/output/${data.image_url}`;
+        selectedImage = `${SERVER_IP}:8000/cameras/output/${data.image_url}`;
         selectedNotificationId = data._id;
       }
     } catch (error) {
@@ -106,7 +108,7 @@
     try {
       // Önce session bilgisini al ve toplam kayıt sayısını öğren
       const sessionResponse = await fetch(
-        `http://localhost:8000/detection-sessions/${sessionId}`,
+        `${SERVER_IP}:8000/detection-sessions/${sessionId}`,
       );
       if (sessionResponse.ok) {
         const sessionData = await sessionResponse.json();
@@ -116,7 +118,7 @@
       // Sonra bildirimleri al
       const skip = (page - 1) * pageSize;
       const response = await fetch(
-        `http://localhost:8000/notifications/by_session/${sessionId}?skip=${skip}&limit=${pageSize}`,
+        `${SERVER_IP}:8000/notifications/by_session/${sessionId}?skip=${skip}&limit=${pageSize}`,
       );
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -170,8 +172,8 @@
 
     try {
       const skip = (page - 1) * pageSize;
-      let url = `http://localhost:8000/notifications/by_date?start_date=${encodeURIComponent(startDateTime)}&end_date=${encodeURIComponent(endDateTime)}&skip=${skip}&limit=${pageSize}`;
-      let record_count_url = `http://localhost:8000/notifications/record_count?start_time=${encodeURIComponent(startDateTime)}&end_time=${encodeURIComponent(endDateTime)}`;
+      let url = `${SERVER_IP}:8000/notifications/by_date?start_date=${encodeURIComponent(startDateTime)}&end_date=${encodeURIComponent(endDateTime)}&skip=${skip}&limit=${pageSize}`;
+      let record_count_url = `${SERVER_IP}:8000/notifications/record_count?start_time=${encodeURIComponent(startDateTime)}&end_time=${encodeURIComponent(endDateTime)}`;
       // Sadece labels varsa URL'e ekle
       if (labelsParam) {
         url += `&labels=${labelsParam}`;
@@ -222,7 +224,7 @@
 
   function showImage(url, id) {
     selectedNotificationId = id;
-    selectedImage = `http://localhost:8000/cameras/output/${url}`;
+    selectedImage = `${SERVER_IP}:8000/cameras/output/${url}`;
   }
 
   function closeImage() {
@@ -281,7 +283,7 @@
 
     try {
       const response = await fetch(
-        `http://localhost:8000/notifications/${selectedNotificationId}/around?limit=3`,
+        `${SERVER_IP}:8000/notifications/${selectedNotificationId}/around?limit=3`,
       );
       if (!response.ok)
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -307,7 +309,7 @@
 
       // Resmi göster
       if (nextNotification.image_url) {
-        selectedImage = `http://localhost:8000/cameras/output/${nextNotification.image_url}`;
+        selectedImage = `${SERVER_IP}:8000/cameras/output/${nextNotification.image_url}`;
         selectedNotificationId = nextNotification._id;
       }
     } catch (error) {
@@ -324,7 +326,7 @@
 
     try {
       const response = await fetch(
-        `http://localhost:8000/notifications/${selectedNotificationId}/around?limit=3`,
+        `${SERVER_IP}:8000/notifications/${selectedNotificationId}/around?limit=3`,
       );
       if (!response.ok)
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -347,7 +349,7 @@
 
       // Resmi göster
       if (previousNotification.image_url) {
-        selectedImage = `http://localhost:8000/cameras/output/${previousNotification.image_url}`;
+        selectedImage = `${SERVER_IP}:8000/cameras/output/${previousNotification.image_url}`;
         selectedNotificationId = previousNotification._id;
       }
     } catch (error) {
@@ -376,7 +378,7 @@
 
   const deleteNotification = async (id) => {
     try {
-      await fetch(`http://localhost:8000/notifications/${id}`, {
+      await fetch(`${SERVER_IP}:8000/notifications/${id}`, {
         method: "DELETE",
       });
       notifications = notifications.filter((n) => n._id !== id);
@@ -407,7 +409,7 @@
 
       try {
         const response = await fetch(
-          `http://localhost:8000/detection-sessions/${sessionId}`,
+          `${SERVER_IP}:8000/detection-sessions/${sessionId}`,
           {
             method: "DELETE",
           },
@@ -441,7 +443,7 @@
 
       try {
         const response = await fetch(
-          `http://localhost:8000/notifications/by_date?start_date=${startDateTime}&end_date=${endDateTime}`,
+          `${SERVER_IP}:8000/notifications/by_date?start_date=${startDateTime}&end_date=${endDateTime}`,
           {
             method: "DELETE",
           },
@@ -478,7 +480,7 @@
     try {
       const notificationIds = notifications.map((n) => n._id);
       const response = await fetch(
-        "http://localhost:8000/notifications/batch_delete",
+        SERVER_IP + ":8000/notifications/batch_delete",
         {
           method: "DELETE",
           headers: {
@@ -587,7 +589,7 @@
           <!-- Resim -->
           <div class="relative">
             <img
-              src={"http://localhost:8000/cameras/output/" + n.image_url}
+              src={SERVER_IP + ":8000/cameras/output/" + n.image_url}
               alt="Detection thumbnail"
               class="w-full h-48 object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
               on:click={() => showImage(n.image_url, n._id)}

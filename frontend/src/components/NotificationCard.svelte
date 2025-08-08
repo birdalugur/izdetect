@@ -1,28 +1,31 @@
 <!-- NotificationCard.svelte -->
 <script>
     import { createEventDispatcher } from "svelte";
+    import { SERVER_IP } from "./store.js";
 
     const dispatch = createEventDispatcher();
 
     export let notification;
 
     const handleImageClick = () => {
-        dispatch('imageClick', {
+        dispatch("imageClick", {
             imageUrl: notification.image_url,
-            id: notification._id
+            id: notification._id,
         });
     };
 
     const handleDelete = (event) => {
         event.stopPropagation();
-        dispatch('delete', notification._id);
+        dispatch("delete", notification._id);
     };
 </script>
 
-<div class="border p-4 rounded-lg cursor-pointer shadow hover:shadow-md transition-shadow">
+<div
+    class="border p-4 rounded-lg cursor-pointer shadow hover:shadow-md transition-shadow"
+>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <img
-        src={"http://localhost:8000/cameras/output/" + notification.image_url}
+        src={`${SERVER_IP}:8000/cameras/output/${notification.image_url}`}
         alt="Thumbnail"
         class="w-full h-40 object-cover rounded-md mb-2 cursor-pointer"
         on:click={handleImageClick}
@@ -60,17 +63,20 @@
 </div>
 
 <style>
-  .glass-btn {
-    background: rgba(255,255,255,0.35);
-    backdrop-filter: blur(12px) saturate(180%);
-    -webkit-backdrop-filter: blur(12px) saturate(180%);
-    border-radius: 9999px;
-    box-shadow: 0 4px 24px 0 rgba(31, 38, 135, 0.18);
-    border: 1.5px solid rgba(255,255,255,0.35);
-    transition: background 0.2s, box-shadow 0.2s, color 0.2s;
-  }
-  .glass-btn:hover {
-    background: rgba(239,68,68,0.7);
-    color: #fff;
-  }
+    .glass-btn {
+        background: rgba(255, 255, 255, 0.35);
+        backdrop-filter: blur(12px) saturate(180%);
+        -webkit-backdrop-filter: blur(12px) saturate(180%);
+        border-radius: 9999px;
+        box-shadow: 0 4px 24px 0 rgba(31, 38, 135, 0.18);
+        border: 1.5px solid rgba(255, 255, 255, 0.35);
+        transition:
+            background 0.2s,
+            box-shadow 0.2s,
+            color 0.2s;
+    }
+    .glass-btn:hover {
+        background: rgba(239, 68, 68, 0.7);
+        color: #fff;
+    }
 </style>
