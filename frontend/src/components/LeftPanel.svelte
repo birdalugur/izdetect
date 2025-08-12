@@ -68,8 +68,8 @@
             
             <!-- Text Content -->
             <div  class="flex-1 min-w-0">
-              <h2  class="text-base font-bold leading-tight transition-colors duration-300" class:text-slate-800={!$darkMode} class:text-slate-100={$darkMode}>IzDetect</h2>
-              <p class="text-xs font-medium transition-colors duration-300" class:text-slate-600={!$darkMode} class:text-slate-300={$darkMode}>AI Detection System</p>
+              <h2  class="text-base font-bold leading-tight transition-colors duration-300" class:text-slate-800={!$darkMode} class:text-slate-100={$darkMode}>İzGöz </h2>
+              <p class="text-xs font-medium transition-colors duration-300" class:text-slate-600={!$darkMode} class:text-slate-300={$darkMode}>Drone Tabanlı Akıllı Gözlem Sistemi</p>
             </div>
 
             <!-- Dark Mode Toggle -->
