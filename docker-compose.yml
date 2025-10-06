@@ -49,13 +49,13 @@ services:
       - MONGO_URI=mongodb://mongodb:27017/
     networks:
       - app_network
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [ gpu ]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
 
   services:
     build:
@@ -78,13 +78,13 @@ services:
       - MONGO_HOST=mongodb
     networks:
       - app_network
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [ gpu ]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
 
   frontend:
     image: node:21.7.3
