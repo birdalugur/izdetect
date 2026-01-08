@@ -1,11 +1,11 @@
 import cv2
 import redis
 import time
-from image_processor import ImageProcessor
-from base import BaseClass
+from services.processors.image_processor import ImageProcessor
+from services.core.base import Service
 
 
-class FrameProducer(BaseClass):
+class FrameProducer(Service):
     def __init__(
         self,
         video_source: str,
@@ -13,11 +13,11 @@ class FrameProducer(BaseClass):
         camera_id: str,
         redis_client: redis.Redis = None,
     ):
+        super().__init__(redis_client)
         self.video_source = video_source
         self.output_queue = output_queue
-        self.camera_id = camera_id  # Yeni: Kamera kimliği
-        self.is_connected = False  # Kamera bağlantı durumu
-        super().__init__(redis_client)
+        self.camera_id = camera_id
+        self.is_connected = False
         self.stop_signal = False
 
     def stop(self):
@@ -30,6 +30,7 @@ class FrameProducer(BaseClass):
         retry_count = 0
         max_retries = 6
 
+        cap = None
         while retry_count < max_retries:
             cap = cv2.VideoCapture(self.video_source)
             if not cap.isOpened():
@@ -41,10 +42,11 @@ class FrameProducer(BaseClass):
                 self.is_connected = True
                 break
 
-        if not self.is_connected:
+        if not self.is_connected or cap is None:
             print(
                 f"Failed to connect to {self.video_source} after {max_retries} retries."
             )
+            # Potentially critical error, but we'll publish disconnected
             self.redis_client.publish("task_control", "disconnected")
             return
 
@@ -70,12 +72,3 @@ class FrameProducer(BaseClass):
             not_ret_count = 0
 
         cap.release()
-
-
-if __name__ == "__main__":
-    processor = FrameProducer(
-        output_queue="camera1",
-        video_source="/home/birdal/izdetect/sahil.mp4",
-        camera_id="deneme",
-    )
-    processor.run(encoding_method="binary")
