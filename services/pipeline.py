@@ -1,12 +1,12 @@
 from typing import List, Optional
 import redis
 
-from services.core.service_runner import ServiceManager
-from services.processors.frame_producer import FrameProducer
-from services.processors.inference import Inference
-from services.processors.detection_processor import DetectionProcessor
-from services.processors.notify_processor import NotifyProcessor
-from services.core.db import add_detection_session, update_detection_session_end
+from core.service_runner import ServiceManager
+from processors.frame_producer import FrameProducer
+from processors.inference import Inference
+from processors.detection_processor import DetectionProcessor
+from processors.notify_processor import NotifyProcessor
+from core.db import add_detection_session, update_detection_session_end
 
 class CameraPipeline:
     def __init__(self, camera_url: str, camera_idx: int, runner_process: ServiceManager, runner_thread: ServiceManager):

@@ -6,11 +6,11 @@ import os
 # though ideally we fix the imports to be absolute or relative properly.
 # Assuming services is a package.
 
-import services.model as model
+import model as model
 from typing import List
 import redis
-from services.processors.image_processor import ImageProcessor
-from services.core.base import Service
+from processors.image_processor import ImageProcessor
+from core.base import Service
 
 
 class Inference(Service):

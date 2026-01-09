@@ -1,8 +1,8 @@
 import cv2
 import redis
 import time
-from services.processors.image_processor import ImageProcessor
-from services.core.base import Service
+from processors.image_processor import ImageProcessor
+from core.base import Service
 
 
 class FrameProducer(Service):

@@ -4,9 +4,9 @@ import time
 from multiprocessing import Event
 from typing import Dict
 
-from services.core.service_runner import ServiceManager
-from services.core.db import get_db, update_detection_session_end
-from services.pipeline import CameraPipeline
+from core.service_runner import ServiceManager
+from core.db import get_db, update_detection_session_end
+from pipeline import CameraPipeline
 
 REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))

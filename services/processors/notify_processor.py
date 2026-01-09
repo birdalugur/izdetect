@@ -5,10 +5,10 @@ import cv2
 import os
 from datetime import datetime
 from collections import Counter
-from services.core.utils import draw_detection_with_det, decode_img
-from services.core.db import Record, add_notification
-from services.core.redis_client import publish_to_redis
-from services.core.base import Service
+from core.utils import draw_detection_with_det, decode_img
+from core.db import Record, add_notification
+from core.redis_client import publish_to_redis
+from core.base import Service
 
 class NotifyProcessor(Service):
     def __init__(

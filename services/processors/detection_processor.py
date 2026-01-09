@@ -4,9 +4,9 @@ import time
 from typing import List
 import redis
 
-from services.core.sort import Sort
-from services.core.base import Service
-from services.core.db import get_settings
+from core.sort import Sort
+from core.base import Service
+from core.db import get_settings
 
 
 class LabelConverter:
