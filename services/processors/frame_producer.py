@@ -1,6 +1,7 @@
 import cv2
 import redis
 import time
+import os
 from processors.image_processor import ImageProcessor
 from core.base import Service
 
@@ -27,48 +28,59 @@ class FrameProducer(Service):
         print(f"Stopping FrameProducer for camera {self.camera_id}...")
 
     def run(self, encoding_method="binary"):
-        retry_count = 0
-        max_retries = 6
+        # Set timeout to 5000ms (5 seconds) to avoid long hangs on connection loss
+        os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "timeout;5000"
 
-        cap = None
-        while retry_count < max_retries:
+        print(f"[{self.camera_id}] FrameProducer started for {self.video_source}")
+
+        # Outer loop handles connection/reconnection
+        while not self.stop_signal:
             cap = cv2.VideoCapture(self.video_source)
             if not cap.isOpened():
-                print(f"Error opening video source {self.video_source}. Retrying...")
-                retry_count += 1
+                print(f"[{self.camera_id}] Error opening video source. Retrying in 2s...")
                 time.sleep(2)
                 continue
-            else:
-                self.is_connected = True
-                break
 
-        if not self.is_connected or cap is None:
-            print(
-                f"Failed to connect to {self.video_source} after {max_retries} retries."
-            )
-            # Potentially critical error, but we'll publish disconnected
-            self.redis_client.publish("task_control", "disconnected")
-            return
+            self.is_connected = True
+            print(f"[{self.camera_id}] Connected to {self.video_source}")
 
-        not_ret_count = 0
-        while not self.stop_signal:
-            ret, frame = cap.read()
-            if not ret:
-                not_ret_count += 1
-                print("No frames from camera, retrying {}...".format(not_ret_count))
-                time.sleep(0.1)
-                if not_ret_count > 5:
-                    print("Camera disconnected, switching to URL wait mode.")
-                    self.stop_signal = True
-                    self.redis_client.publish("task_control", "disconnected")
-                    break
-                else:
-                    continue
-
-            image_bytes = ImageProcessor.encode_img(
-                frame, encoding_method=encoding_method
-            )
-            self.redis_client.lpush(self.output_queue, image_bytes)
             not_ret_count = 0
 
-        cap.release()
+            # Inner loop handles frame reading
+            while not self.stop_signal:
+                ret, frame = cap.read()
+                if not ret:
+                    not_ret_count += 1
+                    # Log every 10 failures to avoid spamming
+                    if not_ret_count % 10 == 0:
+                        print(f"[{self.camera_id}] No frames, retrying {not_ret_count}...")
+
+                    # If we fail enough times, assume connection lost
+                    if not_ret_count > 5:
+                        print(f"[{self.camera_id}] Connection lost. Reconnecting...")
+                        break
+
+                    time.sleep(0.1)
+                    continue
+
+                # Reset failure counter on success
+                not_ret_count = 0
+
+                try:
+                    image_bytes = ImageProcessor.encode_img(
+                        frame, encoding_method=encoding_method
+                    )
+                    if self.redis_client:
+                        self.redis_client.lpush(self.output_queue, image_bytes)
+                except Exception as e:
+                    print(f"[{self.camera_id}] Error processing frame: {e}")
+
+            cap.release()
+            self.is_connected = False
+
+            # If stopped, we exit outer loop.
+            # If not stopped (meaning connection lost), wait a bit before reconnecting.
+            if not self.stop_signal:
+                time.sleep(1)
+
+        print(f"[{self.camera_id}] FrameProducer stopped.")
