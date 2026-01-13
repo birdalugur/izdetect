@@ -1,12 +1,19 @@
 import time
-import model
+import sys
+import os
+
+# Ensure we can import modules from parent directories if needed,
+# though ideally we fix the imports to be absolute or relative properly.
+# Assuming services is a package.
+
+import model as model
 from typing import List
 import redis
-from image_processor import ImageProcessor
-from base import BaseClass
+from processors.image_processor import ImageProcessor
+from core.base import Service
 
 
-class Inference(BaseClass):
+class Inference(Service):
     def __init__(
         self,
         input_queue: str,
@@ -26,7 +33,11 @@ class Inference(BaseClass):
         image = ImageProcessor.decode_image(image_bytes)
         detections = model.process_frame(image)
         ImageProcessor.save_image_with_detections(image, detections)
-        self.redis_client.push_to_queue(self.image_bytes_queue, [image_bytes])
+        # Note: push_to_queue is not a standard redis method.
+        # Assuming rpush or lpush was intended or it's a wrapper method I missed in base?
+        # Checking base class... base class has standard redis client.
+        # Assuming lpush for now as per other methods.
+        self.redis_client.lpush(self.image_bytes_queue, image_bytes)
 
     def process_batch_frames(self, image_bytes_list: List[bytes]):
         images = ImageProcessor.decode_image_batch(image_bytes_list)
@@ -34,11 +45,15 @@ class Inference(BaseClass):
         serialized_results = ImageProcessor.serialize_detection_results(
             detection_results
         )
-        self.redis_client.lpush(self.output_queue, *serialized_results)
-        self.redis_client.lpush(self.image_bytes_queue, *image_bytes_list)
+        if serialized_results:
+             self.redis_client.lpush(self.output_queue, *serialized_results)
+        if image_bytes_list:
+             self.redis_client.lpush(self.image_bytes_queue, *image_bytes_list)
 
     def run(self):
         while not self.stop_signal:
+            # redis rpop with count (batch_size) returns list or None
+            # Standard redis-py rpop(name, count) returns list
             image_bytes = self.redis_client.rpop(self.input_queue, self.batch_size)
             if image_bytes:
                 if isinstance(image_bytes, bytes):
@@ -46,18 +61,8 @@ class Inference(BaseClass):
                 elif isinstance(image_bytes, list):
                     self.process_batch_frames(image_bytes)
             else:
-                print("Queue is empty, inference waiting...")
-                time.sleep(1)
+                # print("Queue is empty, inference waiting...")
+                time.sleep(0.1)
 
     def stop(self):
         self.stop_signal = True
-
-
-if __name__ == "__main__":
-    inference = Inference(
-        input_queue="camera1",
-        output_queue="inference1",
-        image_bytes_queue="camera1_inf",
-        batch_size=10,
-    )
-    inference.run()
