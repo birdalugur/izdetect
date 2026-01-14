@@ -2,12 +2,9 @@ import json
 import numpy as np
 import time
 from typing import List
-import redis
-
 from core.sort import Sort
 from core.base import Service
-from core.db import get_settings
-
+from core.interfaces import MessageBroker, DetectionRepository
 
 class LabelConverter:
     def __init__(self):
@@ -29,8 +26,9 @@ class LabelConverter:
 
 
 class DetectionProcessor(Service):
-    def __init__(self, input_queue: str, output_queue: str, redis_client: redis.Redis = None):
-        super().__init__(redis_client)
+    def __init__(self, repository: DetectionRepository, message_broker: MessageBroker, input_queue: str, output_queue: str):
+        super().__init__(message_broker)
+        self.repository = repository
         self.label_converter = LabelConverter()
         self.input_queue = input_queue
         self.output_queue = output_queue
@@ -38,7 +36,7 @@ class DetectionProcessor(Service):
 
         # Initial MongoDB config fetch
         try:
-            config = get_settings()
+            config = self.repository.get_settings()
             self.memory = int(config.get("memory", 5))
             self.sensitivity = float(config.get("sensitivity", 0.2))
         except Exception as e:
@@ -57,9 +55,7 @@ class DetectionProcessor(Service):
 
     def run(self):
         while not self.stop_signal:
-            detection_bytes = self.redis_client.rpop(
-                self.input_queue
-            )
+            detection_bytes = self.message_broker.rpop(self.input_queue)
             if detection_bytes:
                 try:
                     detection = json.loads(detection_bytes)
@@ -76,13 +72,11 @@ class DetectionProcessor(Service):
                     detection_ids = self.tracker.update(dets=dets, labels=converted_labels)
                     detection_ids_list = self.format_detection_ids(detection_ids)
 
-                    self.redis_client.lpush(
-                        self.output_queue, *[json.dumps(detection_ids_list).encode()]
-                    )
+                    msg = json.dumps(detection_ids_list)
+                    self.message_broker.lpush(self.output_queue, msg)
                 except Exception as e:
                     print(f"Error in DetectionProcessor: {e}")
             else:
-                # print("Queue is empty, Tracking waiting...")
                 time.sleep(0.1)
 
     def stop(self):

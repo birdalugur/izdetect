@@ -1,20 +1,17 @@
-import cv2
-import redis
 import time
-import os
-from processors.image_processor import ImageProcessor
 from core.base import Service
-
+from core.interfaces import VideoSource, MessageBroker
+from services.processors.image_processor import ImageProcessor
 
 class FrameProducer(Service):
     def __init__(
         self,
-        video_source: str,
+        video_source: VideoSource,
+        message_broker: MessageBroker,
         output_queue: str,
         camera_id: str,
-        redis_client: redis.Redis = None,
     ):
-        super().__init__(redis_client)
+        super().__init__(message_broker)
         self.video_source = video_source
         self.output_queue = output_queue
         self.camera_id = camera_id
@@ -28,30 +25,27 @@ class FrameProducer(Service):
         print(f"Stopping FrameProducer for camera {self.camera_id}...")
 
     def run(self, encoding_method="binary"):
-        # Set timeout to 5000ms (5 seconds) to avoid long hangs on connection loss
-        os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "timeout;5000"
-
-        print(f"[{self.camera_id}] FrameProducer started for {self.video_source}")
+        print(f"[{self.camera_id}] FrameProducer started.")
 
         # Outer loop handles connection/reconnection
         while not self.stop_signal:
-            cap = cv2.VideoCapture(self.video_source)
-            if not cap.isOpened():
+            success = self.video_source.open()
+            if not success:
                 print(f"[{self.camera_id}] Error opening video source. Retrying in 2s...")
                 time.sleep(2)
                 continue
 
             self.is_connected = True
-            print(f"[{self.camera_id}] Connected to {self.video_source}")
+            print(f"[{self.camera_id}] Connected.")
 
             not_ret_count = 0
 
             # Inner loop handles frame reading
             while not self.stop_signal:
-                ret, frame = cap.read()
+                ret, frame = self.video_source.read()
                 if not ret:
                     not_ret_count += 1
-                    # Log every 10 failures to avoid spamming
+                    # Log every 10 failures
                     if not_ret_count % 10 == 0:
                         print(f"[{self.camera_id}] No frames, retrying {not_ret_count}...")
 
@@ -70,16 +64,14 @@ class FrameProducer(Service):
                     image_bytes = ImageProcessor.encode_img(
                         frame, encoding_method=encoding_method
                     )
-                    if self.redis_client:
-                        self.redis_client.lpush(self.output_queue, image_bytes)
+                    if self.message_broker:
+                        self.message_broker.lpush(self.output_queue, image_bytes)
                 except Exception as e:
                     print(f"[{self.camera_id}] Error processing frame: {e}")
 
-            cap.release()
+            self.video_source.release()
             self.is_connected = False
 
-            # If stopped, we exit outer loop.
-            # If not stopped (meaning connection lost), wait a bit before reconnecting.
             if not self.stop_signal:
                 time.sleep(1)
 

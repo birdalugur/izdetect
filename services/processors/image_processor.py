@@ -3,7 +3,7 @@ import json
 import cv2
 import numpy as np
 from typing import List, Dict
-import core.utils as utils
+from core import utils
 
 
 class ImageProcessor:

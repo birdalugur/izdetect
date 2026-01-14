@@ -29,11 +29,13 @@ services:
 
   api:
     build:
-      context: ./api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: api/Dockerfile
     # command: python3 app.py
     volumes:
       - ./api:/app
+      - ./core:/app/core
+      - ./infrastructure:/app/infrastructure
       # - ./requirements.txt:/app/requirements.txt
       - ./data:/app/data
       - /etc/localtime:/etc/localtime:ro
@@ -59,12 +61,14 @@ services:
 
   services:
     build:
-      context: ./services
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/Dockerfile
     # command: python3 main.py
     volumes:
       - ./data:/app/data
       - ./services:/app
+      - ./core:/app/core
+      - ./infrastructure:/app/infrastructure
       # - ./requirements.txt:/app/requirements.txt
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro

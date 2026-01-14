@@ -1,38 +1,38 @@
-import redis
-import os
 import time
+import sys
 from multiprocessing import Event
 from typing import Dict
 
 from core.service_runner import ServiceManager
-from core.db import get_db, update_detection_session_end
-from pipeline import CameraPipeline
-
-REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))
-redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+from infrastructure.redis_broker import RedisBroker
+from infrastructure.mongo_repository import MongoDetectionRepository
+from infrastructure.detr_detector import DetrObjectDetector
+from services.pipeline import CameraPipeline
 
 # Global State
 running = Event()
 pipelines: Dict[str, CameraPipeline] = {}
-db, _ = get_db()
+broker = RedisBroker()
+repository = MongoDetectionRepository()
 
 # Runners
 process_runner = ServiceManager(mode="process")
 thread_runner = ServiceManager(mode="thread")
 
+detector = None
 
 def fetch_camera_urls():
-    camera_collection = db["cameras"]
-    return [cam["ip"] for cam in camera_collection.find()]
-
+    return repository.get_camera_urls()
 
 def start_tasks():
-    global running, pipelines
+    global running, pipelines, detector
 
     if running.is_set():
         print("Tasks are already running.")
         return
+
+    if detector is None:
+        detector = DetrObjectDetector()
 
     camera_urls = fetch_camera_urls()
     print(f"Updated camera URLs: {camera_urls}")
@@ -52,7 +52,7 @@ def start_tasks():
             runner_process=process_runner,
             runner_thread=thread_runner
         )
-        pipeline.start()
+        pipeline.start(detector=detector)
         pipelines[camera_id] = pipeline
 
     process_runner.start_all()
@@ -67,7 +67,6 @@ def stop_tasks():
 
     running.clear()
 
-    # Pipelines stop method mainly updates DB session end
     for pipeline in pipelines.values():
         pipeline.stop()
 
@@ -76,13 +75,12 @@ def stop_tasks():
     process_runner.stop_all()
     thread_runner.stop_all()
 
-    redis_client.flushall()
+    broker.flush_all()
     print("All tasks stopped. Waiting for start command.")
 
 
 def redis_listener():
-    pubsub = redis_client.pubsub()
-    pubsub.subscribe("task_control")
+    pubsub = broker.subscribe("task_control")
     print("Redis listener started. Waiting for commands...")
 
     for message in pubsub.listen():

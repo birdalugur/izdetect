@@ -1,6 +1,4 @@
 FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
-# FROM python:3.11-slim
-
 
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -14,12 +12,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY services/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Copy shared modules
+COPY core ./core
+COPY infrastructure ./infrastructure
 
-# Expose necessary ports (API, Redis, Frontend)
+# Copy Services code
+COPY services .
+
 EXPOSE 8000 6379 8080
 
 CMD ["python3", "main.py"]
