@@ -9,6 +9,15 @@ from bson import SON
 selected_label_map = {1: "insan", 2: "arac", 3: "hayvan"}
 
 
+def fetch_camera_urls() -> List[str]:
+    """Fetch all camera IP addresses from the database."""
+    db, client = get_db()
+    camera_collection = db["cameras"]
+    urls = [cam["ip"] for cam in camera_collection.find()]
+    client.close()
+    return urls
+
+
 def get_db():
     mongo_host = os.environ.get("MONGO_HOST", "localhost")
     mongo_port = os.environ.get("MONGO_PORT", "27017")
@@ -123,6 +132,7 @@ def test_mongodb_connection():
         print(f"MongoDB bağlanti hatasi: {e}")
         return False
 
+
 def get_settings():
     db = get_db()[0]
     settings_collection = db["system_settings"]
@@ -135,7 +145,7 @@ def get_settings():
     else:
         # Return defaults if not found
         return {"memory": 5, "sensitivity": 0.2}
-    
+
 
 if __name__ == "__main__":
     test_mongodb_connection()

@@ -5,7 +5,7 @@ from multiprocessing import Event
 from typing import Dict
 
 from core.service_runner import ServiceManager
-from core.db import get_db, update_detection_session_end
+from core.db import fetch_camera_urls
 from pipeline import CameraPipeline
 
 REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
@@ -15,16 +15,10 @@ redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=Tr
 # Global State
 running = Event()
 pipelines: Dict[str, CameraPipeline] = {}
-db, _ = get_db()
 
 # Runners
 process_runner = ServiceManager(mode="process")
 thread_runner = ServiceManager(mode="thread")
-
-
-def fetch_camera_urls():
-    camera_collection = db["cameras"]
-    return [cam["ip"] for cam in camera_collection.find()]
 
 
 def start_tasks():
@@ -50,7 +44,7 @@ def start_tasks():
             camera_url=url,
             camera_idx=idx,
             runner_process=process_runner,
-            runner_thread=thread_runner
+            runner_thread=thread_runner,
         )
         pipeline.start()
         pipelines[camera_id] = pipeline
