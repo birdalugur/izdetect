@@ -7,7 +7,6 @@ from datetime import datetime
 from collections import Counter
 from core.utils import draw_detection_with_det, decode_img
 from core.db import Record, add_notification
-from core.redis_client import publish_to_redis
 from core.base import Service
 
 class NotifyProcessor(Service):
@@ -97,7 +96,7 @@ class NotifyProcessor(Service):
                             session_id=self.session_id,
                         )
                         inserted_data = add_notification(record=record)
-                        publish_to_redis(inserted_data)
+                        self.publish_to_redis(inserted_data)
                 except Exception as e:
                     print(f"Error in NotifyProcessor: {e}")
 
@@ -105,3 +104,10 @@ class NotifyProcessor(Service):
 
     def stop(self):
         self.stop_signal = True
+
+    def publish_to_redis(self, data):
+        try:
+            message = json.dumps(data, default=str)
+            self.redis_client.publish("event_channel", message)
+        except Exception as e:
+            print(f"Error publishing to Redis: {e}")
