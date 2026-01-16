@@ -22,19 +22,31 @@ services:
     restart: unless-stopped
     networks:
       - app_network
-    # environment:
-      #   - MONGO_INITDB_ROOT_USERNAME=root
-      #   - MONGO_INITDB_ROOT_PASSWORD=example
 
+  db-service:
+    build:
+      context: ./db_service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./db_service:/app
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    depends_on:
+      - mongodb
+    environment:
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+    networks:
+      - app_network
 
   api:
     build:
       context: ./api
       dockerfile: Dockerfile
-    # command: python3 app.py
     volumes:
       - ./api:/app
-      # - ./requirements.txt:/app/requirements.txt
       - ./data:/app/data
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
@@ -42,11 +54,11 @@ services:
       - "8000:8000"
     depends_on:
       - redis
-      - mongodb
+      - db-service
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - MONGO_URI=mongodb://mongodb:27017/
+      - DB_SERVICE_URL=http://db-service:8000
     networks:
       - app_network
     deploy:
@@ -61,21 +73,19 @@ services:
     build:
       context: ./services
       dockerfile: Dockerfile
-    # command: python3 main.py
     volumes:
       - ./data:/app/data
       - ./services:/app
-      # - ./requirements.txt:/app/requirements.txt
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     depends_on:
       - redis
-      - mongodb
+      - db-service
       - api
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - MONGO_HOST=mongodb
+      - DB_SERVICE_URL=http://db-service:8000
     networks:
       - app_network
     deploy:
@@ -91,8 +101,6 @@ services:
     working_dir: /app
     volumes:
       - ./frontend:/app
-      # - /etc/localtime:/etc/localtime:ro
-      # - /etc/timezone:/etc/timezone:ro
     ports:
       - "3000:3000"
     command: >
