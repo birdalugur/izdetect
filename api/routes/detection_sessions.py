@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
-from db import (get_all_detection_sessions, get_detection_sessions_with_pagination, delete_detection_session_and_related, get_detection_session_by_id)
+from db_client import (get_all_detection_sessions, get_detection_sessions_with_pagination, delete_detection_session_and_related, get_detection_session_by_id)
 
 router = APIRouter(prefix="/detection-sessions", tags=["Detection Sessions"])
 

@@ -9,7 +9,7 @@ torchvision
 transformers
 pillow
 python-multipart
-pymongo
 matplotlib
 filterpy
 pydantic
+requests

@@ -7,5 +7,5 @@ aioredis
 psutil
 pillow
 python-multipart
-pymongo
 matplotlib
+requests

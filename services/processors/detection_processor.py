@@ -6,7 +6,7 @@ import redis
 
 from core.sort import Sort
 from core.base import Service
-from core.db import get_settings
+from core.db_client import get_settings
 
 
 class LabelConverter:

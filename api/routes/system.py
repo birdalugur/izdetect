@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from db import get_settings, update_settings
+from db_client import get_settings, update_settings
 import psutil
 
 router = APIRouter(prefix="/system", tags=["System"])

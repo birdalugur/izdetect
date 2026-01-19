@@ -5,7 +5,7 @@ from multiprocessing import Event
 from typing import Dict
 
 from core.service_runner import ServiceManager
-from core.db import fetch_camera_urls
+from core.db_client import fetch_camera_urls
 from pipeline import CameraPipeline
 
 REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")

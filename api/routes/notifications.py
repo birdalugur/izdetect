@@ -4,7 +4,7 @@ from typing import Optional, List
 from pydantic import BaseModel
 from utils.helpers import map_labels
 from config import Config
-from db import (
+from db_client import (
     get_active_notifications,
     close_notification,
     clear_all_notifications,
@@ -166,8 +166,8 @@ async def delete_notifications_by_date(start_date: str, end_date: str):
         dict: Silinen kayıt sayısı mesajı.
     """
     try:
-        result = delete_all(start_date, end_date)
-        return {"message": f"{result.deleted_count} notifications deleted"}
+        deleted_count = delete_all(start_date, end_date)
+        return {"message": f"{deleted_count} notifications deleted"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -184,8 +184,8 @@ async def delete_notifications_batch(request: BatchDeleteRequest):
         dict: Silinen bildirim sayısı mesajı.
     """
     try:
-        result = delete_notifications_by_ids(request.notification_ids)
-        return {"message": f"{result.deleted_count} notifications deleted"}
+        deleted_count = delete_notifications_by_ids(request.notification_ids)
+        return {"message": f"{deleted_count} notifications deleted"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -241,7 +241,8 @@ async def delete_notification_route(notification_id: str):
     Returns:
         dict: Başarı mesajı.
     """
-    result = delete_notification(notification_id)
-    if result is not None:
+    try:
+        delete_notification(notification_id)
         return {"message": "Notification deleted successfully"}
-    raise HTTPException(status_code=404, detail="Notification not found")
+    except Exception:
+        raise HTTPException(status_code=404, detail="Notification not found")

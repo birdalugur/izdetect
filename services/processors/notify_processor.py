@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 from collections import Counter
 from core.utils import draw_detection_with_det, decode_img
-from core.db import Record, add_notification
+from core.db_client import Record, add_notification
 from core.base import Service
 
 class NotifyProcessor(Service):

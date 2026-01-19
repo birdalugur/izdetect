@@ -26,6 +26,24 @@ services:
       #   - MONGO_INITDB_ROOT_USERNAME=root
       #   - MONGO_INITDB_ROOT_PASSWORD=example
 
+  db-service:
+    build:
+      context: ./db_service
+      dockerfile: Dockerfile
+    volumes:
+      - ./data:/app/data
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    ports:
+      - "8002:8000"
+    depends_on:
+      - mongodb
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/
+      - OUTPUT_FOLDER=/app/data
+      - DB_NAME=object_detection
+    networks:
+      - app_network
 
   api:
     build:
@@ -42,11 +60,11 @@ services:
       - "8000:8000"
     depends_on:
       - redis
-      - mongodb
+      - db-service
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - MONGO_URI=mongodb://mongodb:27017/
+      - DB_SERVICE_URL=http://db-service:8000
     networks:
       - app_network
     deploy:
@@ -70,12 +88,12 @@ services:
       - /etc/timezone:/etc/timezone:ro
     depends_on:
       - redis
-      - mongodb
+      - db-service
       - api
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - MONGO_HOST=mongodb
+      - DB_SERVICE_URL=http://db-service:8000
     networks:
       - app_network
     deploy:

@@ -6,7 +6,7 @@ from processors.frame_producer import FrameProducer
 from processors.inference import Inference
 from processors.detection_processor import DetectionProcessor
 from processors.notify_processor import NotifyProcessor
-from core.db import add_detection_session, update_detection_session_end
+from core.db_client import add_detection_session, update_detection_session_end
 
 class CameraPipeline:
     def __init__(self, camera_url: str, camera_idx: int, runner_process: ServiceManager, runner_thread: ServiceManager):
