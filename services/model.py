@@ -1,4 +1,9 @@
 import torch
+import os
+
+# Disable safetensors auto conversion
+os.environ["DISABLE_SAFETENSORS_CONVERSION"] = "true"
+
 from transformers import DetrImageProcessorFast, DetrForObjectDetection
 from core.utils import ProcessingTimer
 import time
@@ -6,10 +11,10 @@ import time
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"device: {device}")
 processor = DetrImageProcessorFast.from_pretrained(
-    "facebook/detr-resnet-50", revision="no_timm"
+    "facebook/detr-resnet-50", revision="no_timm", use_safetensors=False
 )
 model = DetrForObjectDetection.from_pretrained(
-    "facebook/detr-resnet-50", revision="no_timm"
+    "facebook/detr-resnet-50", revision="no_timm", use_safetensors=False
 ).to(device)
 
 model.half()
