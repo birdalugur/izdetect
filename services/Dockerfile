@@ -1,5 +1,4 @@
-FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
-# FROM python:3.11-slim
+FROM python:3.11
 
 
 WORKDIR /app

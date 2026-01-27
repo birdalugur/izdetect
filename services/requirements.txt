@@ -1,7 +1,6 @@
 opencv-python==4.10.0.84
 imageio==2.36.0
 redis
-aioredis
 psutil
 torch
 torchvision

@@ -1,5 +1,4 @@
-from typing import List, Optional
-import redis
+from typing import Optional
 
 from core.service_runner import ServiceManager
 from processors.frame_producer import FrameProducer
