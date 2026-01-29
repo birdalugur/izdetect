@@ -9,12 +9,13 @@ router = APIRouter(prefix="/system", tags=["System"])
 class Settings(BaseModel):
     memory: int
     sensitivity: float
+    retention_days: int = 3
 
 
 @router.post("/update-settings", summary="Sistem ayarlarını güncelle")
 async def update_system_settings(settings: Settings):
     """
-    Veritabanındaki sistem ayarlarını (memory ve sensitivity) günceller.
+    Veritabanındaki sistem ayarlarını (memory, sensitivity ve retention_days) günceller.
 
     Args:
         settings (Settings): Yeni sistem ayarları.
@@ -23,7 +24,7 @@ async def update_system_settings(settings: Settings):
         dict: Güncelleme işlemi sonucunu belirten mesaj.
     """
     try:
-        update_settings(settings.memory, settings.sensitivity)
+        update_settings(settings.memory, settings.sensitivity, settings.retention_days)
         return {"message": "Settings updated successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -32,7 +33,7 @@ async def update_system_settings(settings: Settings):
 @router.get("/get-settings", summary="Mevcut sistem ayarlarını getir")
 async def fetch_system_settings():
     """
-    Veritabanında kayıtlı olan sistem ayarlarını (memory ve sensitivity) getirir.
+    Veritabanında kayıtlı olan sistem ayarlarını (memory, sensitivity ve retention_days) getirir.
 
     Returns:
         dict: Kayıtlı sistem ayarları.
