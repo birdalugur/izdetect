@@ -57,14 +57,14 @@ services:
               count: 1
               capabilities: [ gpu ]
 
-  services:
+  workers:
     build:
-      context: ./services
+      context: ./workers
       dockerfile: Dockerfile
     # command: python3 main.py
     volumes:
       - ./data:/app/data
-      - ./services:/app
+      - ./workers:/app
       # - ./requirements.txt:/app/requirements.txt
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
