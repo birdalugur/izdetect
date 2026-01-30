@@ -2,6 +2,7 @@
   import SectionCard from "./components/SectionCard.svelte";
   import SidebarToolbar from "./components/SidebarToolbar.svelte";
   import LeftPanel from "./components/LeftPanel.svelte";
+  import FilterPanel from "./components/FilterPanel.svelte";
   import MiddlePanel from "./components/MiddlePanel.svelte";
   import Notifications from "./components/Notifications.svelte";
   import Modal from "./components/Modal.svelte";
@@ -9,7 +10,7 @@
   import toast, { Toaster } from "svelte-french-toast";
 
   let messages = [];
-  let leftOpen = true;
+  let activePanel = "control"; // 'control' | 'filter' | null
 
   const addMessage = (message) => {
     messages = [message, ...messages].slice(0, 5);
@@ -36,30 +37,34 @@
 >
   <!-- Sidebar Toolbar -->
   <div class="flex-none z-40">
-    <SidebarToolbar bind:open={leftOpen} />
+    <SidebarToolbar bind:activePanel={activePanel} />
   </div>
 
   <!-- Sol Panel -->
   <div
-    class={`transition-all duration-300 overflow-visible ${leftOpen ? "md:w-1/4 w-full" : "md:w-0 w-0 p-0 overflow-hidden"}`}
+    class={`transition-all duration-300 overflow-visible ${activePanel ? "md:w-1/4 w-full" : "md:w-0 w-0 p-0 overflow-hidden"}`}
   >
-    {#if leftOpen}
+    {#if activePanel === 'control'}
       <SectionCard className="overflow-visible w-full h-full">
-        <LeftPanel {addMessage} bind:open={leftOpen} />
+        <LeftPanel {addMessage} open={true} />
+      </SectionCard>
+    {:else if activePanel === 'filter'}
+      <SectionCard className="overflow-visible w-full h-full">
+        <FilterPanel open={true} />
       </SectionCard>
     {/if}
   </div>
   <!-- Orta Panel -->
   <div
-    class={`transition-all duration-300 ${leftOpen ? "md:w-2/5 w-full" : "md:w-3/5 w-full"}`}
+    class={`transition-all duration-300 ${activePanel ? "md:w-2/5 w-full" : "md:w-3/5 w-full"}`}
   >
     <SectionCard className="w-full">
-      <MiddlePanel {leftOpen} />
+      <MiddlePanel leftOpen={!!activePanel} />
     </SectionCard>
   </div>
   <!-- Sağ Panel -->
   <div
-    class={`transition-all duration-300 ${leftOpen ? "md:w-2/5 w-full" : "md:w-2/5 w-full"}`}
+    class={`transition-all duration-300 ${activePanel ? "md:w-2/5 w-full" : "md:w-2/5 w-full"}`}
   >
     <SectionCard className="w-full">
       <Notifications />
