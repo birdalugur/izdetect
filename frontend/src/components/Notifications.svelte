@@ -61,13 +61,6 @@
     notifications = [];
   }
 
-  async function removeOne(id) {
-    await fetch(`${SERVER_IP}:8000/notifications/${id}`, {
-      method: "DELETE",
-    });
-    notifications = notifications.filter((n) => n._id !== id);
-  }
-
   // Resim görüntüleme modalını aç
   function showImage(url, id) {
     modalStore.set({
@@ -123,28 +116,6 @@
           <div
             class="relative bg-[rgba(255,255,255,0.5)] backdrop-blur rounded-lg p-3 shadow hover:scale-[1.02] transition"
           >
-            <!-- Sil butonu -->
-            <button
-              on:click={() => removeOne(n._id)}
-              class="absolute top-2 right-2 text-red-600 hover:text-white hover:bg-red-600 p-1 rounded-full transition"
-              aria-label="Sil"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="w-5 h-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-
             <!-- Etiketler -->
             <div class="flex flex-wrap gap-2 mb-2">
               {#each n.labels as label}
