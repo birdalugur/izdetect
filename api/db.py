@@ -1,7 +1,7 @@
 import os
 from pymongo import MongoClient
 from bson.objectid import ObjectId
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
 from config import Config
 
@@ -19,18 +19,48 @@ def get_settings():
         return {
             "memory": settings_doc.get("memory", 5),
             "sensitivity": settings_doc.get("sensitivity", 0.2),
+            "retention_days": settings_doc.get("retention_days", 3),
         }
     else:
         # Return defaults if not found
-        return {"memory": 5, "sensitivity": 0.2}
+        return {"memory": 5, "sensitivity": 0.2, "retention_days": 3}
 
 
-def update_settings(memory: int, sensitivity: float):
+def update_settings(memory: int, sensitivity: float, retention_days: int = 3):
     settings_collection.update_one(
         {"_id": "global_settings"},
-        {"$set": {"memory": memory, "sensitivity": sensitivity}},
+        {
+            "$set": {
+                "memory": memory,
+                "sensitivity": sensitivity,
+                "retention_days": retention_days,
+            }
+        },
         upsert=True,
     )
+
+
+def cleanup_old_data():
+    """
+    Sistem ayarlarındaki saklama süresine (retention_days) göre
+    eski kayıtları ve görselleri siler.
+    """
+    settings = get_settings()
+    retention_days = settings.get("retention_days", 3)
+
+    # Eğer retention_days çok büyükse veya 0 ise mantığına göre değişir.
+    # Burada basitçe: retention_days kadar gün öncesinden eski olanları sil.
+    if retention_days < 1:
+        retention_days = 3
+
+    cutoff_date = datetime.now() - timedelta(days=retention_days)
+
+    # Başlangıç tarihi olarak çok eski bir zaman
+    start_date = datetime.min
+
+    print(f"Running cleanup: deleting data older than {cutoff_date} (Retention: {retention_days} days)")
+
+    return delete_all(start_date, cutoff_date)
 
     
 def get_detection_sessions_with_pagination(
