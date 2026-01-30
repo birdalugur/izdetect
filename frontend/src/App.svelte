@@ -3,6 +3,7 @@
   import SidebarToolbar from "./components/SidebarToolbar.svelte";
   import LeftPanel from "./components/LeftPanel.svelte";
   import FilterPanel from "./components/FilterPanel.svelte";
+  import CameraPanel from "./components/CameraPanel.svelte";
   import MiddlePanel from "./components/MiddlePanel.svelte";
   import Notifications from "./components/Notifications.svelte";
   import Modal from "./components/Modal.svelte";
@@ -51,6 +52,10 @@
     {:else if activePanel === 'filter'}
       <SectionCard className="overflow-visible w-full h-full">
         <FilterPanel open={true} />
+      </SectionCard>
+    {:else if activePanel === 'camera'}
+      <SectionCard className="overflow-visible w-full h-full">
+        <CameraPanel open={true} />
       </SectionCard>
     {/if}
   </div>
