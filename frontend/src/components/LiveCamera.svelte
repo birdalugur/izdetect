@@ -1,7 +1,6 @@
 <script>
   import GlassCard from "./GlassCard.svelte";
   import { writable } from "svelte/store";
-  import CamForm from "./CamForm.svelte";
   import { modalStore, SERVER_IP } from "./store.js";
   import { onMount } from "svelte";
   import toast, { Toaster } from "svelte-french-toast";
@@ -59,69 +58,7 @@
 
   const selectCamera = (cam) => selectedCamera.set(cam);
 
-  const openCameraForm = () => {
-    modalStore.set({
-      isOpen: true,
-      component: CamForm,
-      props: {
-        onCameraAdded: () => {
-          modalStore.set({ isOpen: false, component: null, props: {} });
-          fetchCameras();
-        },
-      },
-      isSmallModal: true, // Küçük modal boyutu için flag ekliyoruz
-    });
-  };
-
-  const deleteCamera = async (cameraId) => {
-    const confirmed = window.confirm(
-      `"${cameraId}" kamerasını silmek istediğinize emin misiniz?`,
-    );
-    if (!confirmed) {
-      toast.dismiss();
-      toast.error("Kamera silme işlemi iptal edildi.", {
-        duration: 3000,
-        position: "top-right",
-      });
-      return;
-    }
-
-    try {
-      const response = await fetch(`${SERVER_IP}:8000/cameras/${cameraId}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        // Silinen kamera seçili kameraysa, başka bir kameraya geç
-        if ($selectedCamera?.id === cameraId) {
-          const remainingCameras = $cameraList.filter(
-            (cam) => cam.id !== cameraId,
-          );
-          selectedCamera.set(
-            remainingCameras.length > 0 ? remainingCameras[0] : null,
-          );
-        }
-
-        // Kamera listesini yeniden yükle
-        await fetchCameras();
-        console.log(`Kamera "${cameraId}" başarıyla silindi.`);
-      } else {
-        const error = await response.text();
-        toast.dismiss();
-        toast.error(`Kamera silme hatası: ${error}`, {
-          duration: 3000,
-          position: "top-right",
-        });
-      }
-    } catch (e) {
-      console.error("Kamera silme hatası:", e);
-      toast.dismiss();
-      toast.error("Kamera silinirken bir hata oluştu.", {
-        duration: 3000,
-        position: "top-right",
-      });
-    }
-  };
+  // We no longer manage cameras here (add/delete), it's done in CameraPanel via Sidebar.
 
   fetchCameras();
 </script>
@@ -130,27 +67,6 @@
   <div class="flex">
     <!-- Controls Sidebar -->
     <div class="flex flex-col gap-4 p-4">
-      <!-- Kamera Ekleme Butonu -->
-      <button
-        on:click={openCameraForm}
-        class="p-3 rounded-full transition bg-green-500/80 hover:bg-green-600 text-white border border-white/30 shadow-lg"
-        title="Yeni Kamera Ekle"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="w-6 h-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M12 4v16m8-8H4"
-          />
-        </svg>
-      </button>
       {#each $cameraList as cam}
         <div class="relative group">
           <button
@@ -176,15 +92,6 @@
                 d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
               />
             </svg>
-          </button>
-
-          <!-- Kamera Silme Butonu -->
-          <button
-            on:click={() => deleteCamera(cam.id)}
-            class="absolute -top-1 -right-1 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center text-xs"
-            title={`${cam.id} kamerasını sil`}
-          >
-            ✕
           </button>
         </div>
       {/each}

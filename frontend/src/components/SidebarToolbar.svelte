@@ -63,4 +63,26 @@
     </svg>
   </button>
 
+  <!-- Camera Button -->
+  <button
+    class="p-3 rounded-xl transition-all duration-200 hover:scale-105"
+    class:text-slate-700={!$darkMode}
+    class:text-slate-200={$darkMode}
+    class:hover:bg-slate-200-50={!$darkMode}
+    class:hover:bg-slate-700-50={$darkMode}
+    class:bg-blue-100={activePanel === 'camera' && !$darkMode}
+    class:bg-blue-900={activePanel === 'camera' && $darkMode}
+    style="background: {activePanel === 'camera'
+      ? ($darkMode ? 'rgba(30, 58, 138, 0.6)' : 'rgba(219, 234, 254, 0.8)')
+      : ($darkMode ? 'rgba(51, 65, 85, 0.5)' : 'rgba(255, 255, 255, 0.5)')}"
+    on:click={() => setActive('camera')}
+    aria-label="Toggle Camera Panel"
+    title="Kamera Yönetimi"
+  >
+    <!-- Camera/Video Icon -->
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+    </svg>
+  </button>
+
 </div>
