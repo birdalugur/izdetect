@@ -3,7 +3,6 @@
   import GlassCard from './GlassCard.svelte';
   import Control   from './Control.svelte';
   import Ram       from './Ram.svelte';
-  import Filter    from './Filter.svelte';
   import { darkMode } from './store.js';
 
   export let addMessage;
@@ -87,7 +86,6 @@
       
       <Control {addMessage} />
       <Ram />
-      <Filter />
     </div>
   {/if}
 </div>
