@@ -47,7 +47,8 @@ async def run_cleanup_task():
 @app.on_event("startup")
 async def startup_event():
     # Uygulama başladığında temizlik görevini arka planda başlat
-    asyncio.create_task(run_cleanup_task())
+    # Task referansını saklayarak garbage collector tarafından silinmesini önle
+    app.state.cleanup_task = asyncio.create_task(run_cleanup_task())
 
 
 @app.get("/")
