@@ -1,5 +1,6 @@
 <script>
   import SectionCard from "./components/SectionCard.svelte";
+  import SidebarToolbar from "./components/SidebarToolbar.svelte";
   import LeftPanel from "./components/LeftPanel.svelte";
   import MiddlePanel from "./components/MiddlePanel.svelte";
   import Notifications from "./components/Notifications.svelte";
@@ -33,16 +34,19 @@
   class="relative flex flex-col md:flex-row gap-6 min-h-screen p-4"
   class:dark={$darkMode}
 >
+  <!-- Sidebar Toolbar -->
+  <div class="flex-none z-40">
+    <SidebarToolbar bind:open={leftOpen} />
+  </div>
+
   <!-- Sol Panel -->
   <div
-    class={`transition-all duration-300 overflow-visible ${leftOpen ? "md:w-1/4 w-full" : "md:w-0 w-0 p-0"}`}
+    class={`transition-all duration-300 overflow-visible ${leftOpen ? "md:w-1/4 w-full" : "md:w-0 w-0 p-0 overflow-hidden"}`}
   >
     {#if leftOpen}
-      <SectionCard className="overflow-visible w-full">
+      <SectionCard className="overflow-visible w-full h-full">
         <LeftPanel {addMessage} bind:open={leftOpen} />
       </SectionCard>
-    {:else}
-      <LeftPanel {addMessage} bind:open={leftOpen} />
     {/if}
   </div>
   <!-- Orta Panel -->

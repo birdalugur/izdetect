@@ -9,30 +9,12 @@
   export let addMessage;
   export let open = true;
 
-  function togglePanel() {
-    open = !open;
-  }
-
   function toggleDarkMode() {
     darkMode.update(n => !n);
   }
 </script>
 
 <div class="relative h-full">
-  <!-- Toggle Button -->
-  <button
-    class="fixed {open ? 'top-1/2 right-2' : 'top-4 left-4'} z-50 w-12 h-12 flex items-center justify-center rounded-full glass-toggle shadow-xl border-2 border-white/40 text-blue-700 hover:text-white hover:bg-blue-500/80 hover:scale-110 transition-all duration-300"
-    style={open ? "transform: translateY(-50%);" : ""}
-    on:click={togglePanel}
-    aria-label={open ? 'Paneli Kapat' : 'Paneli Aç'}
-  >
-    {#if open}
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-    {:else}
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-    {/if}
-  </button>
-
   <!-- Panel Content -->
   {#if open}
     <div class="pt-1 flex flex-col gap-2 h-full overflow-y-auto pb-1 transition-all duration-300">
@@ -112,13 +94,3 @@
 
 
 
-<style>
-  .glass-toggle {
-    background: rgba(255,255,255,0.35);
-    backdrop-filter: blur(12px) saturate(180%);
-    -webkit-backdrop-filter: blur(12px) saturate(180%);
-    border-radius: 50%;
-    box-shadow: 0 4px 24px 0 rgba(31, 38, 135, 0.18);
-    transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
-  }
-</style>
