@@ -25,7 +25,7 @@
 </script>
 
 {#if totalPages > 1}
-  <div class="flex justify-center items-center gap-1 mt-4">
+  <div class="flex justify-center items-center gap-1 mt-1">
     <!-- İlk sayfa butonu -->
     {#if currentPage > 3}
       <button

@@ -263,7 +263,7 @@
   </div>
 
   <!-- Pagination - Alt kısımda sabit -->
-  <div class="mt-4 pt-4 border-t border-white-200 dark:border-slate-600/40">
+  <div class="mt-2 pt-2 border-t border-white-200 dark:border-slate-600/40">
     <Pagination {currentPage} {totalPages} onPageChange={goToPage} />
   </div>
 </GlassCard>

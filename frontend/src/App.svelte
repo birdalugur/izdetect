@@ -33,7 +33,7 @@
 <Toaster closeButton={true} position="top-right" />
 
 <main
-  class="relative flex flex-col md:flex-row gap-6 min-h-screen p-4"
+  class="relative flex flex-col md:flex-row gap-4 min-h-screen p-4"
   class:dark={$darkMode}
 >
   <!-- Sidebar Toolbar -->
