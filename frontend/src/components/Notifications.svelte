@@ -75,16 +75,15 @@
 
 <GlassCard className="flex flex-col">
   <!-- Başlık ve Tümünü Sil -->
-  <div class="flex justify-between items-center mb-4">
-    <h3 class="text-xl font-semibold text-white-800 dark:text-black-200">
+  <div class="flex justify-between items-center mb-4 gap-3">
+    <h3 class="text-lg font-semibold text-white-800 dark:text-white-200">
       Bildirimler
     </h3>
     <button
       on:click={removeAll}
-      class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all duration-200 hover:scale-105 shadow-md
-             bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700
-             dark:from-red-600 dark:to-red-700 dark:hover:from-red-700 dark:hover:to-red-800
-             text-white border border-red-300 dark:border-red-500"
+      class="p-2 rounded-full bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/40 dark:hover:bg-red-800/60 dark:text-red-400 transition-colors"
+      aria-label="Tümünü sil"
+      title="Tüm bildirimleri sil"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -100,7 +99,6 @@
           d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22"
         />
       </svg>
-      <span>Tümünü Sil</span>
     </button>
   </div>
 
