@@ -64,7 +64,7 @@
     class={`transition-all duration-300 ${activePanel ? "md:w-1/3 w-full" : "md:w-1/2 w-full"}`}
   >
     <SectionCard className="w-full">
-      <MiddlePanel leftOpen={!!activePanel} />
+      <MiddlePanel leftOpen={!!activePanel} {addMessage} />
     </SectionCard>
   </div>
   <!-- Sağ Panel -->

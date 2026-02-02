@@ -3,9 +3,10 @@
     import Table from "./Table.svelte";
     
     export let leftOpen = true;
+    export let addMessage = () => {};
 </script>
 
 <div class="flex flex-col gap-5 h-full overflow-y-auto transition-all duration-300">
-    <LiveCamera />
+    <LiveCamera {addMessage} />
     <Table />
 </div>

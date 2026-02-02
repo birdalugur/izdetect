@@ -1,9 +1,12 @@
 <script>
   import GlassCard from "./GlassCard.svelte";
+  import StartStopButton from "./StartStopButton.svelte";
   import { writable } from "svelte/store";
   import { modalStore, SERVER_IP } from "./store.js";
   import { onMount } from "svelte";
   import toast, { Toaster } from "svelte-french-toast";
+
+  export let addMessage = () => {};
 
   let cameraList = writable([]);
   let selectedCamera = writable(null);
@@ -67,7 +70,11 @@
   <div class="flex">
     <!-- Controls Sidebar -->
     <div class="flex flex-col gap-4 p-4">
+      <!-- Start/Stop Button at Top -->
+      <StartStopButton {addMessage} />
+      
       {#each $cameraList as cam}
+      
         <div class="relative group">
           <button
             on:click={() => selectCamera(cam)}
