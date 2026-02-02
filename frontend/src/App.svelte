@@ -43,7 +43,7 @@
 
   <!-- Sol Panel -->
   <div
-    class={`transition-all duration-300 overflow-visible ${activePanel ? "md:w-1/4 w-full" : "md:w-0 w-0 p-0 overflow-hidden"}`}
+    class={`transition-all duration-300 overflow-visible ${activePanel ? "md:w-1/3 w-full" : "md:w-0 w-0 p-0 overflow-hidden"}`}
   >
     {#if activePanel === 'control'}
       <SectionCard className="overflow-visible w-full h-full">
@@ -61,15 +61,15 @@
   </div>
   <!-- Orta Panel -->
   <div
-    class={`transition-all duration-300 ${activePanel ? "md:w-2/5 w-full" : "md:w-3/5 w-full"}`}
+    class={`transition-all duration-300 ${activePanel ? "md:w-1/3 w-full" : "md:w-1/2 w-full"}`}
   >
     <SectionCard className="w-full">
-      <MiddlePanel leftOpen={!!activePanel} />
+      <MiddlePanel leftOpen={!!activePanel} {addMessage} />
     </SectionCard>
   </div>
   <!-- Sağ Panel -->
   <div
-    class={`transition-all duration-300 ${activePanel ? "md:w-2/5 w-full" : "md:w-2/5 w-full"}`}
+    class={`transition-all duration-300 ${activePanel ? "md:w-1/3 w-full" : "md:w-1/2 w-full"}`}
   >
     <SectionCard className="w-full">
       <Notifications />

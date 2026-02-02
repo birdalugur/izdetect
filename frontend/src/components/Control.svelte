@@ -3,19 +3,11 @@
   import { onMount } from "svelte";
   import GlassCard from "./GlassCard.svelte";
   import { SERVER_IP } from "./store";
-  import { cameraUrls, clearCameraUrls, darkMode } from "./store.js";
-  import { detectionRefresh } from "./store.js";
-
-  export let addMessage;
+  import { darkMode } from "./store.js";
 
   let memoryValue = 5;
   let sensitivityValue = 0.2;
   let retentionValue = 3;
-  let isActive = false;
-  let isStarting = false;
-  let startMessage = "";
-  let isStopping = false;
-  let stopMessage = "";
 
   // Reactive values for display
   $: memoryPercentage = (memoryValue / 100) * 100;
@@ -36,33 +28,9 @@
     return "from-cyan-400 to-blue-500";
   };
 
-  // Check if system is running
-  const checkSystemState = async () => {
-    try {
-      const response = await fetch(SERVER_IP + ":8000/cameras/isrunning");
-      const data = await response.json();
-      if (response.ok) {
-        isActive = data.is_running;
-        if (isActive) {
-          // If system is running, get the camera URLs
-          const cameras = await fetch(SERVER_IP + ":8000/cameras/get-cameras");
-          const camerasData = await cameras.json();
-          if (cameras.ok && camerasData.length > 0) {
-            cameraUrls.set({
-              cameraUrl2: `${SERVER_IP}:8000/cameras/video/${camerasData[0].id}`,
-            });
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error checking system state:", error);
-    }
-  };
-
   // Fetch settings from backend on mount
   onMount(async () => {
     try {
-      await checkSystemState();
       const res = await fetch(SERVER_IP + ":8000/system/get-settings");
       const data = await res.json();
       if (res.ok) {
@@ -76,81 +44,6 @@
       console.error("Fetch error:", err);
     }
   });
-
-  const startRealTimeDetection = async () => {
-    await updateSettings();
-    isStarting = true;
-    startMessage = "Starting real-time video processing...";
-    addMessage(startMessage);
-    try {
-      const response = await fetch(
-        SERVER_IP + ":8000/cameras/start-detection",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            memory: memoryValue,
-            sensitivity: sensitivityValue,
-          }),
-        },
-      );
-      const data = await response.json();
-      startMessage = response.ok
-        ? data.message
-        : `Could not start: ${data.error || response.statusText}`;
-      if (response.ok) {
-        // Check system state after starting
-        const stateResponse = await fetch(
-          SERVER_IP + ":8000/cameras/isrunning",
-        );
-        const stateData = await stateResponse.json();
-        isActive = stateData.is_running;
-        if (isActive) {
-          cameraUrls.set({ cameraUrl2: data.default_camera_url });
-        }
-      }
-    } catch (error) {
-      startMessage = `Error: ${error.message}`;
-    } finally {
-      isStarting = false;
-      addMessage(startMessage);
-      console.log("[Control] Başlat sonrası detectionRefresh update");
-      detectionRefresh.update((n) => n + 1);
-    }
-  };
-
-  const stopRealTimeDetection = async () => {
-    isStopping = true;
-    stopMessage = "Stopping frame producer...";
-    addMessage(stopMessage);
-    try {
-      const response = await fetch(SERVER_IP + ":8000/cameras/stop-detection", {
-        method: "POST",
-      });
-      const data = await response.json();
-      stopMessage = response.ok
-        ? data.message
-        : `Could not stop: ${data.error || response.statusText}`;
-      if (response.ok) {
-        // Check system state after stopping
-        const stateResponse = await fetch(
-          SERVER_IP + ":8000/cameras/isrunning",
-        );
-        const stateData = await stateResponse.json();
-        isActive = stateData.is_running;
-        if (!isActive) {
-          clearCameraUrls();
-        }
-      }
-    } catch (error) {
-      stopMessage = `Error: ${error.message}`;
-    } finally {
-      isStopping = false;
-      addMessage(stopMessage);
-      console.log("[Control] Durdur sonrası detectionRefresh update");
-      detectionRefresh.update((n) => n + 1);
-    }
-  };
 
   const updateSettings = async () => {
     try {
@@ -345,96 +238,4 @@
       />
     </div>
   </div>
-
-  <!-- Başlat/Durdur Butonu -->
-  <div class="flex justify-center">
-    <button
-      type="button"
-      on:click={isActive ? stopRealTimeDetection : startRealTimeDetection}
-      disabled={isStarting || isStopping}
-      aria-pressed={isActive}
-      aria-label={isActive ? "Durdur" : "Başlat"}
-      class="glass-btn flex items-center gap-2 px-6 py-3 rounded-full shadow-lg border border-white/30 text-blue-700 hover:text-white bg-white/30 hover:bg-blue-500/80 backdrop-blur-md transition-all duration-200"
-    >
-      {#if isStarting || isStopping}
-        <!-- Dönen yükleme spineri -->
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="w-6 h-6 animate-spin"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <circle
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            stroke-width="4"
-            stroke-opacity="0.2"
-          />
-          <path
-            d="M4 12a8 8 0 018-8"
-            stroke="currentColor"
-            stroke-width="4"
-            stroke-linecap="round"
-          />
-        </svg>
-      {:else if isActive}
-        <!-- Durdurma ikonu -->
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="w-6 h-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M18.364 5.636a9 9 0 11-12.728 0M12 2v4"
-          />
-        </svg>
-      {:else}
-        <!-- Başlatma ikonu -->
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="w-6 h-6"
-          fill="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path d="M8 5l11 7-11 7z" />
-        </svg>
-      {/if}
-      <span>
-        {#if isStarting}
-          Starting...
-        {:else if isStopping}
-          Stopping...
-        {:else}
-          {isActive ? "Durdur" : "Başlat"}
-        {/if}
-      </span>
-    </button>
-  </div>
 </GlassCard>
-
-<style>
-  .glass-btn {
-    background: rgba(255, 255, 255, 0.35);
-    backdrop-filter: blur(12px) saturate(180%);
-    -webkit-backdrop-filter: blur(12px) saturate(180%);
-    border-radius: 9999px;
-    box-shadow: 0 4px 24px 0 rgba(31, 38, 135, 0.18);
-    border: 1.5px solid rgba(255, 255, 255, 0.35);
-    transition:
-      background 0.2s,
-      box-shadow 0.2s,
-      color 0.2s;
-  }
-  .glass-btn:hover {
-    background: rgba(59, 130, 246, 0.7);
-    color: #fff;
-  }
-</style>
