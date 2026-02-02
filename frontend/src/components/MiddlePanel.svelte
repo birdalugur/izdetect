@@ -5,7 +5,7 @@
     export let leftOpen = true;
 </script>
 
-<div class="pt-1 flex flex-col gap-11 h-full overflow-y-auto pb-1 transition-all duration-300">
+<div class="flex flex-col gap-5 h-full overflow-y-auto transition-all duration-300">
     <LiveCamera />
     <Table />
 </div>
