@@ -86,14 +86,6 @@
 </script>
 
 <div class="w-full">
-  <!-- Başlık -->
-  <div class="mb-6">
-    <h2 class="text-2xl font-bold text-gray-800 mb-2">Kamera Yönetimi</h2>
-    <p class="text-gray-600">
-      Kamera ekleyebilir veya mevcut kameraları görüntüleyebilirsiniz.
-    </p>
-  </div>
-
   <!-- Tab Butonları -->
   <div class="flex mb-6 bg-gray-100 rounded-lg p-1">
     <button
