@@ -32,9 +32,12 @@
     
     /* Layout */
     padding: 2rem;
-    height: 100%;
-    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
     position: relative;
+    overflow: hidden;
     
     /* Smooth transitions */
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);

@@ -34,7 +34,7 @@
 <Toaster closeButton={true} position="top-right" />
 
 <main
-  class="relative flex flex-col md:flex-row gap-4 min-h-screen p-4"
+  class="relative flex flex-col md:flex-row gap-4 h-screen p-4 overflow-hidden"
   class:dark={$darkMode}
 >
   <!-- Sidebar Toolbar -->
@@ -44,39 +44,39 @@
 
   <!-- Sol Panel -->
   <div
-    class={`transition-all duration-300 overflow-visible ${activePanel ? "md:w-1/3 w-full" : "md:w-0 w-0 p-0 overflow-hidden"}`}
+    class={`transition-all duration-300 flex flex-col min-h-0 ${activePanel ? "flex-1 md:w-1/3 w-full" : "w-0 overflow-hidden"}`}
   >
     {#if activePanel === 'settings'}
-      <SectionCard className="overflow-visible w-full h-full">
+      <SectionCard className="w-full h-full">
         <SettingParameters {addMessage} open={true} />
       </SectionCard>
     {:else if activePanel === 'filter'}
-      <SectionCard className="overflow-visible w-full h-full">
+      <SectionCard className="w-full h-full">
         <FilterPanel open={true} />
       </SectionCard>
     {:else if activePanel === 'camera'}
-      <SectionCard className="overflow-visible w-full h-full">
+      <SectionCard className="w-full h-full">
         <CameraPanel open={true} />
       </SectionCard>
     {:else if activePanel === 'stats'}
-      <SectionCard className="overflow-visible w-full h-full">
+      <SectionCard className="w-full h-full">
         <StatsPanel />
       </SectionCard>
     {/if}
   </div>
   <!-- Orta Panel -->
   <div
-    class={`transition-all duration-300 ${activePanel ? "md:w-1/3 w-full" : "md:w-1/2 w-full"}`}
+    class={`transition-all duration-300 flex flex-col flex-1 min-h-0 ${!activePanel ? "md:w-1/2" : ""}`}
   >
-    <SectionCard className="w-full">
+    <SectionCard className="w-full h-full">
       <MiddlePanel leftOpen={!!activePanel} {addMessage} />
     </SectionCard>
   </div>
   <!-- Sağ Panel -->
   <div
-    class={`transition-all duration-300 ${activePanel ? "md:w-1/3 w-full" : "md:w-1/2 w-full"}`}
+    class={`transition-all duration-300 flex flex-col flex-1 min-h-0 ${!activePanel ? "md:w-1/2" : ""}`}
   >
-    <SectionCard className="w-full">
+    <SectionCard className="w-full h-full">
       <Notifications />
     </SectionCard>
   </div>

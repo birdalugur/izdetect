@@ -6,9 +6,9 @@
   export let open = true;
 </script>
 
-<div class="relative h-full">
+<div class="relative flex flex-col flex-1 min-h-0">
   {#if open}
-    <div class="pt-1 flex flex-col gap-2 h-full overflow-y-auto pb-1 transition-all duration-300">
+    <div class="flex flex-col gap-2 overflow-y-auto flex-1 min-h-0">
       <!-- Header Section -->
       <div class="mb-1">
         <GlassCard className="p-3 border-gray-200/40 !bg-gray-100/60 dark:!bg-slate-300/60">
@@ -19,7 +19,6 @@
            </div>
         </GlassCard>
       </div>
-
       <Filter />
     </div>
   {/if}

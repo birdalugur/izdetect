@@ -234,7 +234,8 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     background: rgba(255, 255, 255, 0.05);
     padding: 16px;
     border-radius: 12px;

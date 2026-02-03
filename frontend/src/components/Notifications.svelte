@@ -3,7 +3,7 @@
   import { onMount } from "svelte";
   import GlassCard from "./GlassCard.svelte";
   import LabelTag from "./LabelTag.svelte";
-  import { modalStore, SERVER_IP } from "./store.js";
+  import { modalStore, SERVER_IP, darkMode } from "./store.js";
   import toast from "svelte-french-toast";
   import NotificationModal from "./NotificationModal.svelte";
 
@@ -73,38 +73,45 @@
   }
 </script>
 
-<GlassCard className="flex flex-col">
-  <!-- Başlık ve Tümünü Sil -->
-  <div class="flex justify-between items-center mb-4 gap-3">
-    <h3 class="text-lg font-semibold text-white-800 dark:text-white-200">
-      Bildirimler
-    </h3>
-    <button
-      on:click={removeAll}
-      class="p-2 rounded-full bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/40 dark:hover:bg-red-800/60 dark:text-red-400 transition-colors"
-      aria-label="Tümünü sil"
-      title="Tüm bildirimleri sil"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        class="w-4 h-4"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        stroke-width="2"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22"
-        />
-      </svg>
-    </button>
-  </div>
+<div class="relative flex flex-col flex-1 min-h-0">
+  <div class="flex flex-col gap-2 overflow-y-auto flex-1 min-h-0">
+    <!-- Header Section -->
+    <div class="mb-1">
+      <GlassCard className="p-3 border-gray-200/40 !bg-gray-100/60 dark:!bg-slate-300/60">
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-bold leading-tight transition-colors duration-300" class:text-slate-800={!$darkMode} class:text-slate-100={$darkMode}>
+            Bildirimler
+          </h2>
+          <button
+            on:click={removeAll}
+            class="p-2 rounded-full bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/40 dark:hover:bg-red-800/60 dark:text-red-400 transition-colors"
+            aria-label="Tümünü sil"
+            title="Tüm bildirimleri sil"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22"
+              />
+            </svg>
+          </button>
+        </div>
+      </GlassCard>
+    </div>
 
-  <!-- Grid -->
-  <div class="max-h-[calc(100vh-200px)] overflow-y-auto glass-scroll">
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-1">
+    <!-- Content -->
+    <GlassCard className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <!-- Grid -->
+      <div class="overflow-y-auto glass-scroll flex-1">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-1">
       {#if notifications.length === 0}
         <p class="col-span-full text-center text-gray-500 mt-8">
           Gösterilecek bildirim yok.
@@ -142,9 +149,11 @@
           </div>
         {/each}
       {/if}
-    </div>
+        </div>
+      </div>
+    </GlassCard>
   </div>
-</GlassCard>
+</div>
 
 <style>
   .glass-btn {
