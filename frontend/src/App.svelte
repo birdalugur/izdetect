@@ -1,9 +1,10 @@
 <script>
   import SectionCard from "./components/SectionCard.svelte";
   import SidebarToolbar from "./components/SidebarToolbar.svelte";
-  import LeftPanel from "./components/LeftPanel.svelte";
+  import SettingParameters from "./components/SettingParameters.svelte";
   import FilterPanel from "./components/FilterPanel.svelte";
   import CameraPanel from "./components/CameraPanel.svelte";
+  import StatsPanel from "./components/StatsPanel.svelte";
   import MiddlePanel from "./components/MiddlePanel.svelte";
   import Notifications from "./components/Notifications.svelte";
   import Modal from "./components/Modal.svelte";
@@ -11,7 +12,7 @@
   import toast, { Toaster } from "svelte-french-toast";
 
   let messages = [];
-  let activePanel = "control"; // 'control' | 'filter' | null
+  let activePanel = "settings"; // 'settings' | 'filter' | null
 
   const addMessage = (message) => {
     messages = [message, ...messages].slice(0, 5);
@@ -45,9 +46,9 @@
   <div
     class={`transition-all duration-300 overflow-visible ${activePanel ? "md:w-1/3 w-full" : "md:w-0 w-0 p-0 overflow-hidden"}`}
   >
-    {#if activePanel === 'control'}
+    {#if activePanel === 'settings'}
       <SectionCard className="overflow-visible w-full h-full">
-        <LeftPanel {addMessage} open={true} />
+        <SettingParameters {addMessage} open={true} />
       </SectionCard>
     {:else if activePanel === 'filter'}
       <SectionCard className="overflow-visible w-full h-full">
@@ -56,6 +57,10 @@
     {:else if activePanel === 'camera'}
       <SectionCard className="overflow-visible w-full h-full">
         <CameraPanel open={true} />
+      </SectionCard>
+    {:else if activePanel === 'stats'}
+      <SectionCard className="overflow-visible w-full h-full">
+        <StatsPanel />
       </SectionCard>
     {/if}
   </div>

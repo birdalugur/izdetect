@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 from config import Config
-from routes import system, cameras, notifications, detection_sessions
+from routes import system, cameras, notifications, detection_sessions, stats
 from db import cleanup_old_data
 
 
@@ -25,6 +25,7 @@ app.include_router(system.router)
 app.include_router(cameras.router)
 app.include_router(notifications.router)
 app.include_router(detection_sessions.router)
+app.include_router(stats.router)
 
 
 async def run_cleanup_task():
