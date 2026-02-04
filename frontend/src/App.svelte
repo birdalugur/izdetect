@@ -44,7 +44,7 @@
 
   <!-- Sol Panel -->
   <div
-    class={`transition-all duration-300 flex flex-col min-h-0 ${activePanel ? "flex-1 md:w-1/3 w-full" : "w-0 overflow-hidden"}`}
+    class={`transition-all duration-300 overflow-visible ${activePanel ? "md:w-1/3 w-full" : "md:w-0 w-0 p-0 overflow-hidden"}`}
   >
     {#if activePanel === 'settings'}
       <SectionCard className="w-full h-full">
@@ -66,7 +66,7 @@
   </div>
   <!-- Orta Panel -->
   <div
-    class={`transition-all duration-300 flex flex-col flex-1 min-h-0 ${!activePanel ? "md:w-1/2" : ""}`}
+    class={`transition-all duration-300 ${activePanel ? "md:w-1/3 w-full" : "md:w-1/2 w-full"}`}
   >
     <SectionCard className="w-full h-full">
       <MiddlePanel leftOpen={!!activePanel} {addMessage} />
@@ -74,7 +74,7 @@
   </div>
   <!-- Sağ Panel -->
   <div
-    class={`transition-all duration-300 flex flex-col flex-1 min-h-0 ${!activePanel ? "md:w-1/2" : ""}`}
+    class={`transition-all duration-300 ${activePanel ? "md:w-1/3 w-full" : "md:w-1/2 w-full"}`}
   >
     <SectionCard className="w-full h-full">
       <Notifications />
