@@ -1,10 +1,9 @@
-<!-- src/components/Table.svelte -->
 <script>
   import { onMount } from "svelte";
   import { writable } from "svelte/store";
   import GlassCard from "./GlassCard.svelte";
   import NotificationModal from "./NotificationModal.svelte";
-  import { modalStore } from "./store.js";
+  import { modalStore, darkMode } from "./store.js";
   import Pagination from "./Pagination.svelte";
   import toast from "svelte-french-toast";
   import { detectionRefresh } from "./store.js";
@@ -121,12 +120,22 @@
   const prevPage = () => goToPage(currentPage - 1);
 </script>
 
-<GlassCard className="w-full h-auto p-4 flex flex-col">
-  <!-- Başlık -->
-  <div class="flex justify-between items-center mb-4">
-    <h2 class="text-xl font-semibold text-black-900">Algılama Geçmişi</h2>
-    <span class="text-sm text-gray-700">Toplam: {totalRecords}</span>
-  </div>
+<div class="relative flex flex-col flex-1 min-h-0">
+  <div class="flex flex-col gap-2 overflow-y-auto flex-1 min-h-0">
+    <!-- Header Section -->
+    <div class="mb-1">
+      <GlassCard className="p-1 border-gray-200/40 !bg-gray-100/60 dark:!bg-slate-300/60">
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-bold leading-tight transition-colors duration-300" class:text-slate-800={!$darkMode} class:text-slate-100={$darkMode}>
+            Algılama Geçmişi
+          </h2>
+          <span class="text-xs transition-colors duration-300" class:text-slate-500={!$darkMode} class:text-slate-400={$darkMode}>Toplam: {totalRecords}</span>
+        </div>
+      </GlassCard>
+    </div>
+
+    <!-- Content -->
+    <GlassCard className="w-full h-auto p-4 flex flex-col flex-1 min-h-0 overflow-hidden">
 
   <!-- Tablo - Flex-1 ile kalan alanı kapla -->
   <div class="flex-1 flex flex-col min-h-0">
@@ -262,8 +271,10 @@
     </div>
   </div>
 
-  <!-- Pagination - Alt kısımda sabit -->
-  <div class="mt-2 pt-2 border-t border-white-200 dark:border-slate-600/40">
+  <!-- Pagination - Alt kısmında sabit -->
+  <div class="mt-2 pt-2 border-t border-white-200 dark:border-slate-600/40\">
     <Pagination {currentPage} {totalPages} onPageChange={goToPage} />
   </div>
-</GlassCard>
+    </GlassCard>
+  </div>
+</div>

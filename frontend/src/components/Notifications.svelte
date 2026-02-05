@@ -77,9 +77,15 @@
   <div class="flex flex-col gap-2 overflow-y-auto flex-1 min-h-0">
     <!-- Header Section -->
     <div class="mb-1">
-      <GlassCard className="p-3 border-gray-200/40 !bg-gray-100/60 dark:!bg-slate-300/60">
+      <GlassCard
+        className="p-3 border-gray-200/40 !bg-gray-100/60 dark:!bg-slate-300/60"
+      >
         <div class="flex items-center justify-between">
-          <h2 class="text-base font-bold leading-tight transition-colors duration-300" class:text-slate-800={!$darkMode} class:text-slate-100={$darkMode}>
+          <h2
+            class="text-base font-bold leading-tight transition-colors duration-300"
+            class:text-slate-800={!$darkMode}
+            class:text-slate-100={$darkMode}
+          >
             Bildirimler
           </h2>
           <button
@@ -112,43 +118,43 @@
       <!-- Grid -->
       <div class="overflow-y-auto glass-scroll flex-1">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-1">
-      {#if notifications.length === 0}
-        <p class="col-span-full text-center text-gray-500 mt-8">
-          Gösterilecek bildirim yok.
-        </p>
-      {:else}
-        {#each notifications as n}
-          <div
-            class="relative bg-[rgba(255,255,255,0.5)] backdrop-blur rounded-lg p-3 shadow hover:scale-[1.02] transition"
-          >
-            <!-- Etiketler -->
-            <div class="flex flex-wrap gap-2 mb-2">
-              {#each n.labels as label}
-                {#each Object.entries(label) as [key, val]}
-                  <LabelTag labelKey={key} labelValue={val} size="sm" />
-                {/each}
-              {/each}
-            </div>
-
-            <!-- Küçük resim -->
-            <img
-              src={`${SERVER_IP}:8000/cameras/output/${n.image_url}`}
-              alt="Thumbnail"
-              class="w-full rounded-md mb-2 cursor-pointer"
-              on:click={() => showImage(n.image_url, n._id)}
-              on:keydown={(e) =>
-                e.key === "Enter" && showImage(n.image_url, n._id)}
-              tabindex="0"
-              role="button"
-            />
-
-            <!-- Zaman -->
-            <p class="text-gray-600 text-xs text-center">
-              {n.time.split(".")[0]}
+          {#if notifications.length === 0}
+            <p class="col-span-full text-center text-gray-500 mt-8">
+              Gösterilecek bildirim yok.
             </p>
-          </div>
-        {/each}
-      {/if}
+          {:else}
+            {#each notifications as n}
+              <div
+                class="relative bg-[rgba(255,255,255,0.5)] backdrop-blur rounded-lg p-3 shadow hover:scale-[1.02] transition"
+              >
+                <!-- Etiketler -->
+                <div class="flex flex-wrap gap-2 mb-2">
+                  {#each n.labels as label}
+                    {#each Object.entries(label) as [key, val]}
+                      <LabelTag labelKey={key} labelValue={val} size="sm" />
+                    {/each}
+                  {/each}
+                </div>
+
+                <!-- Küçük resim -->
+                <img
+                  src={`${SERVER_IP}:8000/cameras/output/${n.image_url}`}
+                  alt="Thumbnail"
+                  class="w-full rounded-md mb-2 cursor-pointer"
+                  on:click={() => showImage(n.image_url, n._id)}
+                  on:keydown={(e) =>
+                    e.key === "Enter" && showImage(n.image_url, n._id)}
+                  tabindex="0"
+                  role="button"
+                />
+
+                <!-- Zaman -->
+                <p class="text-gray-600 text-xs text-center">
+                  {n.time.split(".")[0]}
+                </p>
+              </div>
+            {/each}
+          {/if}
         </div>
       </div>
     </GlassCard>
